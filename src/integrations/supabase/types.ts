@@ -14,7 +14,408 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      achievements: {
+        Row: {
+          badge_type: string | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          points_required: number | null
+        }
+        Insert: {
+          badge_type?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          points_required?: number | null
+        }
+        Update: {
+          badge_type?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          points_required?: number | null
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      culture_content: {
+        Row: {
+          content: string
+          content_type: string
+          created_at: string
+          created_by: string | null
+          english_translation: string | null
+          gujarati_text: string | null
+          id: string
+          image_url: string | null
+          title: string
+        }
+        Insert: {
+          content: string
+          content_type: string
+          created_at?: string
+          created_by?: string | null
+          english_translation?: string | null
+          gujarati_text?: string | null
+          id?: string
+          image_url?: string | null
+          title: string
+        }
+        Update: {
+          content?: string
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          english_translation?: string | null
+          gujarati_text?: string | null
+          id?: string
+          image_url?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      dialogues: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          dialogue_data: Json
+          difficulty_level: number | null
+          id: string
+          scenario: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          dialogue_data: Json
+          difficulty_level?: number | null
+          id?: string
+          scenario: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          dialogue_data?: Json
+          difficulty_level?: number | null
+          id?: string
+          scenario?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      flashcards: {
+        Row: {
+          created_at: string
+          id: string
+          is_learned: boolean | null
+          last_reviewed: string | null
+          times_reviewed: number | null
+          user_id: string
+          vocabulary_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_learned?: boolean | null
+          last_reviewed?: string | null
+          times_reviewed?: number | null
+          user_id: string
+          vocabulary_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_learned?: boolean | null
+          last_reviewed?: string | null
+          times_reviewed?: number | null
+          user_id?: string
+          vocabulary_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcards_vocabulary_id_fkey"
+            columns: ["vocabulary_id"]
+            isOneToOne: false
+            referencedRelation: "vocabulary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practice_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          dialogue_id: string
+          feedback: Json | null
+          id: string
+          score: number | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          dialogue_id: string
+          feedback?: Json | null
+          id?: string
+          score?: number | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          dialogue_id?: string
+          feedback?: Json | null
+          id?: string
+          score?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_sessions_dialogue_id_fkey"
+            columns: ["dialogue_id"]
+            isOneToOne: false
+            referencedRelation: "dialogues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          points: number | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          points?: number | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          points?: number | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quiz_attempts: {
+        Row: {
+          answers: Json | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          max_score: number
+          quiz_id: string
+          score: number
+          time_taken: number | null
+          user_id: string
+        }
+        Insert: {
+          answers?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          max_score: number
+          quiz_id: string
+          score: number
+          time_taken?: number | null
+          user_id: string
+        }
+        Update: {
+          answers?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          max_score?: number
+          quiz_id?: string
+          score?: number
+          time_taken?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          difficulty_level: number | null
+          id: string
+          questions: Json
+          quiz_type: string
+          time_limit: number | null
+          title: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          difficulty_level?: number | null
+          id?: string
+          questions: Json
+          quiz_type: string
+          time_limit?: number | null
+          title: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          difficulty_level?: number | null
+          id?: string
+          questions?: Json
+          quiz_type?: string
+          time_limit?: number | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quizzes_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          earned_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          earned_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          earned_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vocabulary: {
+        Row: {
+          audio_url: string | null
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          difficulty_level: number | null
+          english_word: string
+          gujarati_transliteration: string | null
+          gujarati_word: string
+          id: string
+          image_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          audio_url?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          difficulty_level?: number | null
+          english_word: string
+          gujarati_transliteration?: string | null
+          gujarati_word: string
+          id?: string
+          image_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          audio_url?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          difficulty_level?: number | null
+          english_word?: string
+          gujarati_transliteration?: string | null
+          gujarati_word?: string
+          id?: string
+          image_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vocabulary_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +424,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      user_role: "student" | "teacher"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +551,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["student", "teacher"],
+    },
   },
 } as const

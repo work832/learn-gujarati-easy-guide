@@ -56,10 +56,39 @@ const Practice = () => {
         .order('difficulty_level');
 
       if (error) throw error;
-      setDialogues((data || []).map(dialogue => ({
-        ...dialogue,
-        dialogue_data: Array.isArray(dialogue.dialogue_data) ? dialogue.dialogue_data : []
-      })));
+      setDialogues((data || []).map((d: any) => {
+        let parsed: DialogueEntry[] = [];
+        if (Array.isArray(d.dialogue_data)) {
+          parsed = (d.dialogue_data as any[]).map((item: any) => ({
+            speaker: String(item?.speaker ?? ''),
+            english: String(item?.english ?? ''),
+            gujarati: String(item?.gujarati ?? ''),
+            transliteration: item?.transliteration ? String(item.transliteration) : undefined,
+          }));
+        } else if (typeof d.dialogue_data === 'string') {
+          try {
+            const arr = JSON.parse(d.dialogue_data);
+            if (Array.isArray(arr)) {
+              parsed = arr.map((item: any) => ({
+                speaker: String(item?.speaker ?? ''),
+                english: String(item?.english ?? ''),
+                gujarati: String(item?.gujarati ?? ''),
+                transliteration: item?.transliteration ? String(item.transliteration) : undefined,
+              }));
+            }
+          } catch (e) {
+            parsed = [];
+          }
+        }
+        return {
+          id: d.id,
+          title: d.title ?? '',
+          description: d.description ?? '',
+          scenario: d.scenario ?? '',
+          difficulty_level: d.difficulty_level ?? 1,
+          dialogue_data: parsed,
+        } as Dialogue;
+      }));
     } catch (error) {
       console.error('Error fetching dialogues:', error);
       toast({

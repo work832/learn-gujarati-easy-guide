@@ -10,6 +10,8 @@ import Auth from "./pages/Auth";
 import Flashcards from "./pages/Flashcards";
 import Games from "./pages/Games";
 import Practice from "./pages/Practice";
+import CreateContent from "./pages/CreateContent";
+import StudentProgress from "./pages/StudentProgress";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +30,8 @@ const App = () => (
               <Route path="flashcards" element={<Flashcards />} />
               <Route path="games" element={<Games />} />
               <Route path="practice" element={<Practice />} />
+              <Route path="create-content" element={<CreateContent />} />
+              <Route path="student-progress" element={<StudentProgress />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             </Route>
             <Route path="*" element={<NotFound />} />

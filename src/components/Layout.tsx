@@ -1,10 +1,11 @@
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Home, PlaySquare, Gamepad2, Trophy, Globe, User, LogOut, Users, Plus } from 'lucide-react';
+import { BookOpen, Home, PlaySquare, Gamepad2, Trophy, Globe, User, LogOut, Users, Plus, BarChart } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { cn } from '@/lib/utils';
 
 const Layout = () => {
   const { user, profile, loading, signOut } = useAuth();
@@ -39,6 +40,9 @@ const Layout = () => {
   };
 
   const isTeacher = profile?.role === 'teacher';
+  
+  const navLinkClass = "flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors text-foreground hover:text-accent-foreground";
+  const activeClass = "bg-primary/10 text-primary hover:text-primary";
 
   return (
     <div className="min-h-screen bg-background">
@@ -73,85 +77,85 @@ const Layout = () => {
         <nav className="w-64 min-h-[calc(100vh-73px)] border-r border-border bg-card/30">
           <div className="p-4">
             <div className="space-y-2">
-              <a
-                href="/"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors text-foreground hover:text-accent-foreground"
+              <NavLink
+                to="/"
+                className={({ isActive }) => cn(navLinkClass, isActive && activeClass)}
               >
                 <Home className="h-5 w-5" />
                 <span>Dashboard</span>
-              </a>
+              </NavLink>
               
               {!isTeacher && (
                 <>
-                  <a
-                    href="/flashcards"
-                    className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors text-foreground hover:text-accent-foreground"
+                  <NavLink
+                    to="/flashcards"
+                    className={({ isActive }) => cn(navLinkClass, isActive && activeClass)}
                   >
                     <BookOpen className="h-5 w-5" />
                     <span>Flashcards</span>
-                  </a>
+                  </NavLink>
                   
-                  <a
-                    href="/practice"
-                    className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors text-foreground hover:text-accent-foreground"
+                  <NavLink
+                    to="/practice"
+                    className={({ isActive }) => cn(navLinkClass, isActive && activeClass)}
                   >
                     <PlaySquare className="h-5 w-5" />
                     <span>Practice</span>
-                  </a>
+                  </NavLink>
                   
-                  <a
-                    href="/games"
-                    className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors text-foreground hover:text-accent-foreground"
+                  <NavLink
+                    to="/games"
+                    className={({ isActive }) => cn(navLinkClass, isActive && activeClass)}
                   >
                     <Gamepad2 className="h-5 w-5" />
                     <span>Games</span>
-                  </a>
+                  </NavLink>
                   
-                  <a
-                    href="/leaderboard"
-                    className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors text-foreground hover:text-accent-foreground"
+                  <NavLink
+                    to="/leaderboard"
+                    className={({ isActive }) => cn(navLinkClass, isActive && activeClass)}
                   >
                     <Trophy className="h-5 w-5" />
                     <span>Leaderboard</span>
-                  </a>
+                  </NavLink>
                 </>
               )}
               
               {isTeacher && (
                 <>
-                  <a
-                    href="/teacher/students"
-                    className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors text-foreground hover:text-accent-foreground"
-                  >
-                    <Users className="h-5 w-5" />
-                    <span>Students</span>
-                  </a>
-                  
-                  <a
-                    href="/teacher/content"
-                    className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors text-foreground hover:text-accent-foreground"
+                  <NavLink
+                    to="/create-content"
+                    className={({ isActive }) => cn(navLinkClass, isActive && activeClass)}
                   >
                     <Plus className="h-5 w-5" />
                     <span>Create Content</span>
-                  </a>
+                  </NavLink>
+                  
+                  <NavLink
+                    to="/student-progress"
+                    className={({ isActive }) => cn(navLinkClass, isActive && activeClass)}
+                  >
+                    <BarChart className="h-5 w-5" />
+                    <span>Student Progress</span>
+                  </NavLink>
                 </>
               )}
               
-              <a
-                href="/culture"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors text-foreground hover:text-accent-foreground"
+              <NavLink
+                to="/culture"
+                className={({ isActive }) => cn(navLinkClass, isActive && activeClass)}
               >
                 <Globe className="h-5 w-5" />
                 <span>Culture Corner</span>
-              </a>
+              </NavLink>
               
-              <a
-                href="/profile"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors text-foreground hover:text-accent-foreground"
+              <NavLink
+                to="/profile"
+                className={({ isActive }) => cn(navLinkClass, isActive && activeClass)}
               >
                 <User className="h-5 w-5" />
                 <span>Profile</span>
-              </a>
+              </NavLink>
             </div>
           </div>
         </nav>

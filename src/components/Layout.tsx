@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Home, PlaySquare, Gamepad2, Trophy, Globe, User, LogOut, Users, Plus, BarChart } from 'lucide-react';
+import { BookOpen, Home, PlaySquare, Gamepad2, Trophy, Globe, User, LogOut, Users, Plus, BarChart, FileText } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
@@ -112,11 +112,11 @@ const Layout = () => {
                   </NavLink>
                   
                   <NavLink
-                    to="/leaderboard"
+                    to="/notes"
                     className={({ isActive }) => cn(navLinkClass, isActive && activeClass)}
                   >
-                    <Trophy className="h-5 w-5" />
-                    <span>Leaderboard</span>
+                    <FileText className="h-5 w-5" />
+                    <span>Notes</span>
                   </NavLink>
                 </>
               )}

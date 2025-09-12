@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, MessageCircle, GamepadIcon, Plus, Trash2 } from 'lucide-react';
+import { BookOpen, MessageCircle, GamepadIcon, Plus, Trash2, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -31,6 +31,12 @@ const CreateContent = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('vocabulary');
   const [loading, setLoading] = useState(false);
+  
+  // Content management state
+  const [existingVocabulary, setExistingVocabulary] = useState([]);
+  const [existingQuizzes, setExistingQuizzes] = useState([]);
+  const [existingDialogues, setExistingDialogues] = useState([]);
+  const [managementLoading, setManagementLoading] = useState(false);
 
   // Vocabulary form state
   const [vocabForm, setVocabForm] = useState({
@@ -60,6 +66,39 @@ const CreateContent = () => {
     difficulty_level: 1,
     dialogue_data: [] as DialogueStep[]
   });
+
+  // Load existing content when tab changes
+  useEffect(() => {
+    if (activeTab === 'manage') {
+      loadExistingContent();
+    }
+  }, [activeTab, user]);
+
+  const loadExistingContent = async () => {
+    if (!user) return;
+    
+    setManagementLoading(true);
+    try {
+      const [vocabData, quizData, dialogueData] = await Promise.all([
+        supabase.from('vocabulary').select('*').eq('created_by', user.id).order('created_at', { ascending: false }),
+        supabase.from('quizzes').select('*').eq('created_by', user.id).order('created_at', { ascending: false }),
+        supabase.from('dialogues').select('*').eq('created_by', user.id).order('created_at', { ascending: false })
+      ]);
+
+      setExistingVocabulary(vocabData.data || []);
+      setExistingQuizzes(quizData.data || []);
+      setExistingDialogues(dialogueData.data || []);
+    } catch (error) {
+      console.error('Error loading content:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load existing content",
+        variant: "destructive"
+      });
+    } finally {
+      setManagementLoading(false);
+    }
+  };
 
   const createVocabulary = async () => {
     if (!user || !vocabForm.english_word || !vocabForm.gujarati_word) {
@@ -104,6 +143,78 @@ const CreateContent = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const deleteVocabulary = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('vocabulary')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Vocabulary deleted successfully!"
+      });
+      loadExistingContent();
+    } catch (error) {
+      console.error('Error deleting vocabulary:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete vocabulary",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deleteQuiz = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('quizzes')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Quiz deleted successfully!"
+      });
+      loadExistingContent();
+    } catch (error) {
+      console.error('Error deleting quiz:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete quiz",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deleteDialogue = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('dialogues')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Dialogue deleted successfully!"
+      });
+      loadExistingContent();
+    } catch (error) {
+      console.error('Error deleting dialogue:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete dialogue",
+        variant: "destructive"
+      });
     }
   };
 
@@ -272,7 +383,7 @@ const CreateContent = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="vocabulary" className="gap-2">
               <BookOpen size={16} />
               Vocabulary
@@ -284,6 +395,10 @@ const CreateContent = () => {
             <TabsTrigger value="dialogues" className="gap-2">
               <MessageCircle size={16} />
               Dialogue
+            </TabsTrigger>
+            <TabsTrigger value="manage" className="gap-2">
+              <Eye size={16} />
+              Manage Content
             </TabsTrigger>
           </TabsList>
 
@@ -573,6 +688,121 @@ const CreateContent = () => {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="manage">
+            <div className="space-y-6">
+              {managementLoading ? (
+                <div className="text-center py-8">Loading existing content...</div>
+              ) : (
+                <>
+                  {/* Vocabulary Management */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BookOpen className="h-5 w-5" />
+                        Your Vocabulary ({existingVocabulary.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {existingVocabulary.length > 0 ? (
+                        <div className="grid gap-4">
+                          {existingVocabulary.map((vocab: any) => (
+                            <div key={vocab.id} className="flex justify-between items-center p-3 border rounded-lg">
+                              <div>
+                                <p className="font-medium">{vocab.english_word} - {vocab.gujarati_word}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Level {vocab.difficulty_level} • Created: {new Date(vocab.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => deleteVocabulary(vocab.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-center py-4">No vocabulary created yet</p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Quiz Management */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <GamepadIcon className="h-5 w-5" />
+                        Your Quizzes ({existingQuizzes.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {existingQuizzes.length > 0 ? (
+                        <div className="grid gap-4">
+                          {existingQuizzes.map((quiz: any) => (
+                            <div key={quiz.id} className="flex justify-between items-center p-3 border rounded-lg">
+                              <div>
+                                <p className="font-medium">{quiz.title}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {quiz.quiz_type} • {Array.isArray(quiz.questions) ? quiz.questions.length : 0} questions • Created: {new Date(quiz.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => deleteQuiz(quiz.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-center py-4">No quizzes created yet</p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Dialogue Management */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <MessageCircle className="h-5 w-5" />
+                        Your Dialogues ({existingDialogues.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {existingDialogues.length > 0 ? (
+                        <div className="grid gap-4">
+                          {existingDialogues.map((dialogue: any) => (
+                            <div key={dialogue.id} className="flex justify-between items-center p-3 border rounded-lg">
+                              <div>
+                                <p className="font-medium">{dialogue.title}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {dialogue.scenario} • {Array.isArray(dialogue.dialogue_data) ? dialogue.dialogue_data.length : 0} steps • Created: {new Date(dialogue.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => deleteDialogue(dialogue.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-center py-4">No dialogues created yet</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

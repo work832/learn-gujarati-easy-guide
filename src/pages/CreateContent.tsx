@@ -289,7 +289,7 @@ const CreateContent = () => {
           .insert({
             title,
             description: `Imported ${title} - Bilingual Gujarati quiz with English and Gujarati questions`,
-            quiz_type: 'quiz',
+            quiz_type: 'game',
             difficulty_level: 2,
             time_limit: 15,
             questions: questions as any,

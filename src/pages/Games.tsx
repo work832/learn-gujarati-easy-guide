@@ -50,7 +50,7 @@ const Games = () => {
       const { data, error } = await supabase
         .from('quizzes')
         .select('*')
-        .eq('quiz_type', 'game')
+        .in('quiz_type', ['game', 'quiz'])
         .order('difficulty_level');
 
       if (error) throw error;

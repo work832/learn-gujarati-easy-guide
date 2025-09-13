@@ -564,13 +564,15 @@ const CreateContent = () => {
                           <SelectTrigger>
                             <SelectValue placeholder="Select correct answer" />
                           </SelectTrigger>
-                          <SelectContent>
-                            {question.options.map((option, optIndex) => (
+                        <SelectContent>
+                          {question.options
+                            .filter((option, optIndex) => option.trim() !== '')
+                            .map((option, optIndex) => (
                               <SelectItem key={optIndex} value={option}>
-                                {option || `Option ${optIndex + 1}`}
+                                {option}
                               </SelectItem>
                             ))}
-                          </SelectContent>
+                        </SelectContent>
                         </Select>
                       </div>
                     </div>

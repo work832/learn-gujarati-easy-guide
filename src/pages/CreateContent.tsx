@@ -566,9 +566,10 @@ const CreateContent = () => {
                           </SelectTrigger>
                         <SelectContent>
                           {question.options
-                            .filter((option, optIndex) => option.trim() !== '')
-                            .map((option, optIndex) => (
-                              <SelectItem key={optIndex} value={option}>
+                            .map((option, originalIndex) => ({ option, originalIndex }))
+                            .filter(({ option }) => option.trim() !== '')
+                            .map(({ option, originalIndex }) => (
+                              <SelectItem key={originalIndex} value={option}>
                                 {option}
                               </SelectItem>
                             ))}

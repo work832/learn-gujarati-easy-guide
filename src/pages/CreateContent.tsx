@@ -7,13 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, MessageCircle, GamepadIcon, Plus, Trash2, Eye } from 'lucide-react';
+import { BookOpen, MessageCircle, GamepadIcon, Plus, Trash2, Eye, Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
 interface QuestionData {
   question: string;
+  question_gujarati?: string;
   options: string[];
   correct_answer: string;
   explanation?: string;
@@ -246,6 +247,92 @@ const CreateContent = () => {
     }));
   };
 
+  const parseCSVAndCreateQuizzes = async (csvText: string) => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const lines = csvText.trim().split('\n');
+      const headers = lines[0].split(',');
+      
+      // Group questions by quiz type
+      const quizGroups: Record<string, any[]> = {};
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',');
+        const title = values[0]?.trim();
+        const questionGujarati = values[3]?.trim();
+        const questionEnglish = values[4]?.trim();
+        const options = [values[5]?.trim(), values[6]?.trim(), values[7]?.trim(), values[8]?.trim()];
+        const correctAnswer = values[9]?.trim();
+        
+        if (!title || !questionGujarati || !questionEnglish) continue;
+        
+        if (!quizGroups[title]) {
+          quizGroups[title] = [];
+        }
+        
+        quizGroups[title].push({
+          question: questionEnglish,
+          question_gujarati: questionGujarati,
+          options: options.filter(opt => opt && opt.length > 0),
+          correct_answer: correctAnswer,
+          explanation: ''
+        });
+      }
+      
+      // Create quizzes for each group
+      let createdCount = 0;
+      for (const [title, questions] of Object.entries(quizGroups)) {
+        const { error } = await supabase
+          .from('quizzes')
+          .insert({
+            title,
+            description: `Imported ${title} - Bilingual Gujarati quiz with English and Gujarati questions`,
+            quiz_type: 'quiz',
+            difficulty_level: 2,
+            time_limit: 15,
+            questions: questions as any,
+            created_by: user.id
+          });
+          
+        if (!error) {
+          createdCount++;
+        }
+      }
+      
+      toast({
+        title: "Success",
+        description: `${createdCount} quizzes created successfully from CSV!`
+      });
+      
+    } catch (error) {
+      console.error('Error parsing CSV:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to parse CSV file",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCSVImport = async () => {
+    try {
+      const response = await fetch('/src/assets/gujarati_quiz_55.csv');
+      const csvText = await response.text();
+      await parseCSVAndCreateQuizzes(csvText);
+    } catch (error) {
+      console.error('Error loading CSV:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load CSV file",
+        variant: "destructive"
+      });
+    }
+  };
+
   const createQuiz = async () => {
     if (!user || !quizForm.title || quizForm.questions.length === 0) {
       toast({
@@ -467,7 +554,27 @@ const CreateContent = () => {
                 <CardTitle>Create Quiz/Game</CardTitle>
                 <CardDescription>Create interactive quizzes and games for students</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
+                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center bg-muted/50">
+                  <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Import Gujarati Quiz CSV</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Import the pre-made Gujarati quiz with bilingual questions (English + ગુજરાતી)
+                  </p>
+                  <Button onClick={handleCSVImport} disabled={loading} variant="outline">
+                    {loading ? 'Importing...' : 'Import Gujarati Quiz CSV'}
+                  </Button>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or create manually</span>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="quiz-title">Title *</Label>

@@ -93,77 +93,83 @@ const StudentDashboard = () => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center space-x-2 text-lg">
-              <BookOpen className="h-5 w-5 text-primary" />
-              <span>Practice Flashcards</span>
-            </CardTitle>
-            <CardDescription>
-              Review vocabulary with interactive flashcards
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button className="w-full" size="lg">
-              Start Learning
-            </Button>
-            <div className="mt-3 space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Progress</span>
-                <span className="text-muted-foreground">0%</span>
+        <Link to="/flashcards">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center space-x-2 text-lg">
+                <BookOpen className="h-5 w-5 text-primary" />
+                <span>Practice Flashcards</span>
+              </CardTitle>
+              <CardDescription>
+                Review vocabulary with interactive flashcards
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" size="lg">
+                Start Learning
+              </Button>
+              <div className="mt-3 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Progress</span>
+                  <span className="text-muted-foreground">0%</span>
+                </div>
+                <Progress value={0} className="h-2" />
               </div>
-              <Progress value={0} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center space-x-2 text-lg">
-              <PlaySquare className="h-5 w-5 text-accent" />
-              <span>Conversation Practice</span>
-            </CardTitle>
-            <CardDescription>
-              Practice speaking with AI conversation partner
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" className="w-full" size="lg">
-              Start Speaking
-            </Button>
-            <div className="mt-3 space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Dialogues</span>
-                <span className="text-muted-foreground">0 completed</span>
+        <Link to="/practice">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center space-x-2 text-lg">
+                <PlaySquare className="h-5 w-5 text-accent" />
+                <span>Conversation Practice</span>
+              </CardTitle>
+              <CardDescription>
+                Practice speaking with AI conversation partner
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" className="w-full" size="lg">
+                Start Speaking
+              </Button>
+              <div className="mt-3 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Dialogues</span>
+                  <span className="text-muted-foreground">0 completed</span>
+                </div>
+                <Progress value={0} className="h-2" />
               </div>
-              <Progress value={0} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center space-x-2 text-lg">
-              <Gamepad2 className="h-5 w-5 text-warning" />
-              <span>Fun Games</span>
-            </CardTitle>
-            <CardDescription>
-              Play games to reinforce your learning
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="secondary" className="w-full" size="lg">
-              Play Games
-            </Button>
-            <div className="mt-3 space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">High Score</span>
-                <span className="text-muted-foreground">0</span>
+        <Link to="/games">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center space-x-2 text-lg">
+                <Gamepad2 className="h-5 w-5 text-warning" />
+                <span>Fun Games</span>
+              </CardTitle>
+              <CardDescription>
+                Play games to reinforce your learning
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="secondary" className="w-full" size="lg">
+                Play Games
+              </Button>
+              <div className="mt-3 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">High Score</span>
+                  <span className="text-muted-foreground">0</span>
+                </div>
+                <Progress value={0} className="h-2" />
               </div>
-              <Progress value={0} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Daily Goal & Achievements */}

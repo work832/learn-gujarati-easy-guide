@@ -284,20 +284,30 @@ const CreateContent = () => {
       // Create quizzes for each group
       let createdCount = 0;
       for (const [title, questions] of Object.entries(quizGroups)) {
-        const { error } = await supabase
+        // Check if quiz already exists
+        const { data: existingQuiz } = await supabase
           .from('quizzes')
-          .insert({
-            title,
-            description: `Imported ${title} - Bilingual Gujarati quiz with English and Gujarati questions`,
-            quiz_type: 'game',
-            difficulty_level: 2,
-            time_limit: 15,
-            questions: questions as any,
-            created_by: user.id
-          });
-          
-        if (!error) {
-          createdCount++;
+          .select('id')
+          .eq('title', title)
+          .eq('created_by', user.id)
+          .single();
+        
+        if (!existingQuiz) {
+          const { error } = await supabase
+            .from('quizzes')
+            .insert({
+              title,
+              description: `Imported ${title} - Bilingual Gujarati quiz with English and Gujarati questions`,
+              quiz_type: 'game',
+              difficulty_level: 2,
+              time_limit: 15,
+              questions: questions as any,
+              created_by: user.id
+            });
+            
+          if (!error) {
+            createdCount++;
+          }
         }
       }
       
@@ -305,6 +315,9 @@ const CreateContent = () => {
         title: "Success",
         description: `${createdCount} quizzes created successfully from CSV!`
       });
+      
+      // Reload existing content to show new quizzes
+      loadExistingContent();
       
     } catch (error) {
       console.error('Error parsing CSV:', error);
@@ -332,6 +345,27 @@ const CreateContent = () => {
       });
     }
   };
+
+  // Auto-import CSV on component mount if user is authenticated and hasn't imported yet
+  useEffect(() => {
+    const autoImport = async () => {
+      if (user && !loading) {
+        // Check if quizzes already exist for this user
+        const { data } = await supabase
+          .from('quizzes')
+          .select('id')
+          .eq('created_by', user.id)
+          .limit(1);
+        
+        // If no quizzes exist, auto-import the CSV
+        if (!data || data.length === 0) {
+          await handleCSVImport();
+        }
+      }
+    };
+    
+    autoImport();
+  }, [user]);
 
   const createQuiz = async () => {
     if (!user || !quizForm.title || quizForm.questions.length === 0) {

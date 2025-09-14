@@ -320,7 +320,7 @@ const CreateContent = () => {
 
   const handleCSVImport = async () => {
     try {
-      const response = await fetch('/src/assets/gujarati_quiz_55.csv');
+      const response = await fetch('/gujarati_quiz_55.csv');
       const csvText = await response.text();
       await parseCSVAndCreateQuizzes(csvText);
     } catch (error) {

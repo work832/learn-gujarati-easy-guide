@@ -333,9 +333,73 @@ const CreateContent = () => {
 
   const handleCSVImport = async () => {
     try {
-      const response = await fetch('/gujarati_quiz_55.csv');
+      const response = await fetch('/gujarati_english_quiz.csv');
       const csvText = await response.text();
-      await parseCSVAndCreateQuizzes(csvText);
+      
+      // Parse CSV data - new format with ID, Gujarati Question, English Question, Options A-D, Correct Answer
+      const lines = csvText.split('\n').filter(line => line.trim());
+      
+      const questions: any[] = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',');
+        if (values.length >= 8) {
+          const questionData = {
+            id: `q${values[0]}`,
+            question: `${values[1]} / ${values[2]}`, // Bilingual: Gujarati / English
+            options: [values[3], values[4], values[5], values[6]], // Options A, B, C, D in Gujarati
+            correct: values[7] // Correct answer in Gujarati
+          };
+          questions.push(questionData);
+        }
+      }
+
+      // Create single General Quiz
+      const title = "General Quiz";
+      
+      // Check if quiz already exists
+      const { data: existingQuiz } = await supabase
+        .from('quizzes')
+        .select('id')
+        .eq('title', title)
+        .eq('created_by', user.id)
+        .maybeSingle();
+      
+      if (!existingQuiz) {
+        const { error } = await supabase
+          .from('quizzes')
+          .insert({
+            title,
+            description: "General Knowledge Quiz - Bilingual Gujarati-English questions covering various topics",
+            quiz_type: 'game',
+            difficulty_level: 2,
+            time_limit: 15,
+            questions: questions as any,
+            created_by: user.id
+          });
+          
+        if (!error) {
+          toast({
+            title: "Success",
+            description: `General Quiz created successfully with ${questions.length} questions!`
+          });
+          
+          // Reload existing content to show new quiz
+          loadExistingContent();
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to create quiz. Please try again.",
+            variant: "destructive"
+          });
+        }
+      } else {
+        toast({
+          title: "Info",
+          description: "General Quiz already exists."
+        });
+      }
+      
     } catch (error) {
       console.error('Error loading CSV:', error);
       toast({
@@ -350,14 +414,15 @@ const CreateContent = () => {
   useEffect(() => {
     const autoImport = async () => {
       if (user && !loading) {
-        // Check if quizzes already exist for this user
+        // Check if General Quiz already exists for this user
         const { data } = await supabase
           .from('quizzes')
           .select('id')
+          .eq('title', 'General Quiz')
           .eq('created_by', user.id)
           .limit(1);
         
-        // If no quizzes exist, auto-import the CSV
+        // If General Quiz doesn't exist, auto-import the CSV
         if (!data || data.length === 0) {
           await handleCSVImport();
         }

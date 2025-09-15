@@ -348,7 +348,7 @@ const CreateContent = () => {
             id: `q${i}`,
             question: `${values[3]} / ${values[4]}`, // Bilingual: Gujarati / English
             options: [values[5], values[6], values[7], values[8]], // Options A, B, C, D in Gujarati
-            correct: values[9] // Correct answer in Gujarati
+            correct_answer: values[9] // Correct answer in Gujarati
           };
           questions.push(questionData);
         }

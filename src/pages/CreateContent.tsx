@@ -333,22 +333,22 @@ const CreateContent = () => {
 
   const handleCSVImport = async () => {
     try {
-      const response = await fetch('/gujarati_english_quiz.csv');
+      const response = await fetch('/gujarati_english_quiz_updated.csv');
       const csvText = await response.text();
       
-      // Parse CSV data - new format with ID, Gujarati Question, English Question, Options A-D, Correct Answer
+      // Parse CSV data - new format: Title, Type, Description, Question (Gujarati), Question (English), Option A, Option B, Option C, Option D, Correct Answer (Gujarati)
       const lines = csvText.split('\n').filter(line => line.trim());
       
       const questions: any[] = [];
       
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',');
-        if (values.length >= 8) {
+        const values = lines[i].split(',').map(val => val.replace(/"/g, '').trim());
+        if (values.length >= 10) {
           const questionData = {
-            id: `q${values[0]}`,
-            question: `${values[1]} / ${values[2]}`, // Bilingual: Gujarati / English
-            options: [values[3], values[4], values[5], values[6]], // Options A, B, C, D in Gujarati
-            correct: values[7] // Correct answer in Gujarati
+            id: `q${i}`,
+            question: `${values[3]} / ${values[4]}`, // Bilingual: Gujarati / English
+            options: [values[5], values[6], values[7], values[8]], // Options A, B, C, D in Gujarati
+            correct: values[9] // Correct answer in Gujarati
           };
           questions.push(questionData);
         }
@@ -370,7 +370,7 @@ const CreateContent = () => {
           .from('quizzes')
           .insert({
             title,
-            description: "General Knowledge Quiz - Bilingual Gujarati-English questions covering various topics",
+            description: "Gujarati-English basic interesting quiz covering various general knowledge topics",
             quiz_type: 'game',
             difficulty_level: 2,
             time_limit: 15,
@@ -381,23 +381,43 @@ const CreateContent = () => {
         if (!error) {
           toast({
             title: "Success",
-            description: `General Quiz created successfully with ${questions.length} questions!`
+            description: `General Quiz updated successfully with ${questions.length} questions!`
           });
           
-          // Reload existing content to show new quiz
+          // Reload existing content to show updated quiz
           loadExistingContent();
         } else {
           toast({
             title: "Error",
-            description: "Failed to create quiz. Please try again.",
+            description: "Failed to update quiz. Please try again.",
             variant: "destructive"
           });
         }
       } else {
-        toast({
-          title: "Info",
-          description: "General Quiz already exists."
-        });
+        // Update existing quiz with new questions
+        const { error } = await supabase
+          .from('quizzes')
+          .update({
+            questions: questions as any,
+            description: "Gujarati-English basic interesting quiz covering various general knowledge topics"
+          })
+          .eq('id', existingQuiz.id);
+          
+        if (!error) {
+          toast({
+            title: "Success",
+            description: `General Quiz updated successfully with ${questions.length} questions!`
+          });
+          
+          // Reload existing content to show updated quiz
+          loadExistingContent();
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to update quiz. Please try again.",
+            variant: "destructive"
+          });
+        }
       }
       
     } catch (error) {

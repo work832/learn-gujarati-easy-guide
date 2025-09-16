@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { GamepadIcon, Star, Trophy, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useTimeTracking } from '@/hooks/useTimeTracking';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 
@@ -33,6 +34,7 @@ interface CompletedQuiz {
 const Games = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { incrementActivity } = useTimeTracking({ pageName: 'games' });
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [currentGame, setCurrentGame] = useState<Quiz | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -181,6 +183,8 @@ const Games = () => {
         score: prev.score + 10,
         questionsCorrect: prev.questionsCorrect + 1
       }));
+      
+      incrementActivity(); // Track correct answer as activity
       
       toast({
         title: "Correct! 🎉",

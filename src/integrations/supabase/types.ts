@@ -44,6 +44,39 @@ export type Database = {
         }
         Relationships: []
       }
+      app_usage_sessions: {
+        Row: {
+          activities_completed: number | null
+          created_at: string
+          id: string
+          page_visits: Json | null
+          session_end: string | null
+          session_start: string
+          total_time_minutes: number | null
+          user_id: string
+        }
+        Insert: {
+          activities_completed?: number | null
+          created_at?: string
+          id?: string
+          page_visits?: Json | null
+          session_end?: string | null
+          session_start?: string
+          total_time_minutes?: number | null
+          user_id: string
+        }
+        Update: {
+          activities_completed?: number | null
+          created_at?: string
+          id?: string
+          page_visits?: Json | null
+          session_end?: string | null
+          session_start?: string
+          total_time_minutes?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string

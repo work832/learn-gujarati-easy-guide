@@ -1,8 +1,9 @@
 import React from 'react';
-import { Navigate, Outlet, NavLink } from 'react-router-dom';
+import { Navigate, Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useTimeTracking } from '@/hooks/useTimeTracking';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Home, PlaySquare, Gamepad2, Trophy, Globe, User, LogOut, Users, Plus, BarChart, FileText } from 'lucide-react';
+import { BookOpen, Home, PlaySquare, Gamepad2, Trophy, Globe, User, LogOut, Users, Plus, BarChart, FileText, Clock } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
@@ -10,6 +11,16 @@ import { cn } from '@/lib/utils';
 const Layout = () => {
   const { user, profile, loading, signOut } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
+  
+  // Extract page name from current route
+  const pageName = location.pathname.slice(1) || 'dashboard';
+  
+  // Track time spent in app
+  const { getSessionStats } = useTimeTracking({ 
+    pageName,
+    trackActivities: true 
+  });
 
   if (loading) {
     return (
@@ -64,6 +75,10 @@ const Layout = () => {
             <div className="flex items-center space-x-1 text-sm">
               <Trophy className="h-4 w-4 text-primary" />
               <span className="font-medium text-foreground">{profile?.points || 0}</span>
+            </div>
+            <div className="flex items-center space-x-1 text-sm">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">{getSessionStats().totalTime}m</span>
             </div>
             <Button variant="ghost" size="sm" onClick={handleSignOut}>
               <LogOut className="h-4 w-4" />

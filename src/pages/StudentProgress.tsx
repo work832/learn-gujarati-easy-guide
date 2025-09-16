@@ -4,9 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Users, TrendingUp, Award, Clock, Search, BookOpen, GamepadIcon, MessageCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Users, TrendingUp, Award, Clock, Search, BookOpen, GamepadIcon, MessageCircle, Activity, Timer, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useTimeTracking } from '@/hooks/useTimeTracking';
 import { useToast } from '@/hooks/use-toast';
 
 interface StudentProfile {
@@ -27,14 +29,18 @@ interface StudentStats {
   avg_score: number;
   total_time: number;
   achievements: number;
+  session_time: number;
+  last_active: string;
 }
 
 const StudentProgress = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { incrementActivity } = useTimeTracking({ pageName: 'student-progress' });
   const [students, setStudents] = useState<StudentStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTimeframe, setSelectedTimeframe] = useState('all');
 
   useEffect(() => {
     fetchStudentProgress();
@@ -86,6 +92,19 @@ const StudentProgress = () => {
           .select('*', { count: 'exact', head: true })
           .eq('user_id', student.user_id);
 
+        // App usage sessions for time tracking
+        const { data: usageSessions } = await supabase
+          .from('app_usage_sessions')
+          .select('total_time_minutes, session_start, session_end')
+          .eq('user_id', student.user_id)
+          .order('created_at', { ascending: false });
+
+        // Calculate session time and last active
+        const sessionTime = usageSessions?.reduce((sum, session) => 
+          sum + (session.total_time_minutes || 0), 0) || 0;
+        
+        const lastActive = usageSessions?.[0]?.session_start || student.created_at;
+
         // Calculate average score and total time
         const totalQuizzes = quizAttempts?.length || 0;
         const avgScore = totalQuizzes > 0 
@@ -103,7 +122,9 @@ const StudentProgress = () => {
           quiz_attempts: totalQuizzes,
           avg_score: avgScore,
           total_time: Math.round(totalTime / 60), // Convert to minutes
-          achievements: achievementsCount || 0
+          achievements: achievementsCount || 0,
+          session_time: sessionTime,
+          last_active: lastActive
         };
       });
 
@@ -134,6 +155,7 @@ const StudentProgress = () => {
   const avgProgress = totalStudents > 0 
     ? Math.round(students.reduce((sum, s) => sum + s.avg_score, 0) / totalStudents) 
     : 0;
+  const totalSessionTime = students.reduce((sum, s) => sum + s.session_time, 0);
 
   if (loading) {
     return (
@@ -154,61 +176,71 @@ const StudentProgress = () => {
         </div>
 
         {/* Overview Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{totalStudents}</div>
-              <p className="text-xs text-muted-foreground">
-                All registered students
-              </p>
-            </CardContent>
-          </Card>
+        <Tabs value={selectedTimeframe} onValueChange={setSelectedTimeframe} className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="all">All Time</TabsTrigger>
+            <TabsTrigger value="week">This Week</TabsTrigger>
+            <TabsTrigger value="month">This Month</TabsTrigger>
+          </TabsList>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Students</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{activeStudents}</div>
-              <p className="text-xs text-muted-foreground">
-                Students with activity
-              </p>
-            </CardContent>
-          </Card>
+          <TabsContent value={selectedTimeframe} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-primary">{totalStudents}</div>
+                  <p className="text-xs text-muted-foreground">
+                    All registered students
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Average Score</CardTitle>
-              <Award className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{avgProgress}%</div>
-              <p className="text-xs text-muted-foreground">
-                Across all quizzes
-              </p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Students</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-primary">{activeStudents}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Students with activity
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Engagement</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">
-                {Math.round((activeStudents / Math.max(totalStudents, 1)) * 100)}%
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Active participation rate
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Average Score</CardTitle>
+                  <Award className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-primary">{avgProgress}%</div>
+                  <p className="text-xs text-muted-foreground">
+                    Across all quizzes
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total App Time</CardTitle>
+                  <Timer className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-primary">
+                    {Math.round(totalSessionTime / 60)}h
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Collective learning time
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Search */}
         <div className="flex gap-4 items-center">
@@ -289,7 +321,12 @@ const StudentProgress = () => {
                   {/* Additional Stats */}
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Study Time: {studentData.total_time}m</span>
+                    <span>Session Time: {studentData.session_time}m</span>
+                  </div>
+                  
+                  <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Achievements: {studentData.achievements}</span>
+                    <span>Last Active: {new Date(studentData.last_active).toLocaleDateString()}</span>
                   </div>
 
                   {/* Activity Level Badge */}

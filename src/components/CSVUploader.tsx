@@ -10,9 +10,17 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface CSVUploaderProps {
   onUploadSuccess?: () => void;
+  uploadType?: 'quiz' | 'vocabulary' | 'dialogue';
+  title?: string;
+  description?: string;
 }
 
-export const CSVUploader = ({ onUploadSuccess }: CSVUploaderProps) => {
+export const CSVUploader = ({ 
+  onUploadSuccess, 
+  uploadType = 'quiz',
+  title = 'Upload CSV',
+  description = 'Upload a CSV file to bulk create content'
+}: CSVUploaderProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
@@ -41,7 +49,7 @@ export const CSVUploader = ({ onUploadSuccess }: CSVUploaderProps) => {
     }
   };
 
-  const parseCSVAndCreateQuizzes = async (csvText: string) => {
+  const parseCSVAndCreateContent = async (csvText: string) => {
     if (!user) return;
     
     try {
@@ -50,81 +58,19 @@ export const CSVUploader = ({ onUploadSuccess }: CSVUploaderProps) => {
         throw new Error('CSV must have at least a header row and one data row');
       }
       
-      // Group questions by quiz type/title
-      const quizGroups: Record<string, any[]> = {};
-      
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(val => val.replace(/"/g, '').trim());
-        
-        if (values.length < 10) continue;
-        
-        const title = values[0] || 'Imported Quiz';
-        const questionGujarati = values[3];
-        const questionEnglish = values[4];
-        const options = [values[5], values[6], values[7], values[8]];
-        const correctAnswer = values[9];
-        
-        if (!questionGujarati || !questionEnglish) continue;
-        
-        if (!quizGroups[title]) {
-          quizGroups[title] = [];
-        }
-        
-        quizGroups[title].push({
-          question: `${questionGujarati} / ${questionEnglish}`,
-          question_gujarati: questionGujarati,
-          options: options.filter(opt => opt && opt.length > 0),
-          correct_answer: correctAnswer,
-          explanation: ''
-        });
-      }
-      
-      // Create or update quizzes for each group
       let createdCount = 0;
       let updatedCount = 0;
-      
-      for (const [title, questions] of Object.entries(quizGroups)) {
-        if (questions.length === 0) continue;
-        
-        // Check if quiz already exists
-        const { data: existingQuiz } = await supabase
-          .from('quizzes')
-          .select('id')
-          .eq('title', title)
-          .eq('created_by', user.id)
-          .maybeSingle();
-        
-        if (existingQuiz) {
-          // Update existing quiz
-          const { error } = await supabase
-            .from('quizzes')
-            .update({
-              questions: questions as any,
-              description: `Updated ${title} - Imported from CSV with ${questions.length} questions`
-            })
-            .eq('id', existingQuiz.id);
-            
-          if (!error) {
-            updatedCount++;
-          }
-        } else {
-          // Create new quiz
-          const { error } = await supabase
-            .from('quizzes')
-            .insert({
-              title,
-              description: `${title} - Imported from CSV with ${questions.length} questions`,
-              quiz_type: 'game',
-              difficulty_level: 2,
-              time_limit: 15,
-              questions: questions as any,
-              created_by: user.id
-            });
-            
-          if (!error) {
-            createdCount++;
-          }
-        }
+
+      if (uploadType === 'quiz') {
+        const result = await parseQuizCSV(lines);
+        createdCount = result.createdCount;
+        updatedCount = result.updatedCount;
+      } else if (uploadType === 'vocabulary') {
+        const result = await parseVocabularyCSV(lines);
+        createdCount = result.createdCount;
+      } else if (uploadType === 'dialogue') {
+        const result = await parseDialogueCSV(lines);
+        createdCount = result.createdCount;
       }
       
       return { createdCount, updatedCount };
@@ -135,6 +81,231 @@ export const CSVUploader = ({ onUploadSuccess }: CSVUploaderProps) => {
     }
   };
 
+  const parseQuizCSV = async (lines: string[]) => {
+    const quizGroups: Record<string, any[]> = {};
+    
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(val => val.replace(/"/g, '').trim());
+      
+      if (values.length < 10) continue;
+      
+      const title = values[0] || 'Imported Quiz';
+      const questionGujarati = values[3];
+      const questionEnglish = values[4];
+      const options = [values[5], values[6], values[7], values[8]];
+      const correctAnswer = values[9];
+      
+      if (!questionGujarati || !questionEnglish) continue;
+      
+      if (!quizGroups[title]) {
+        quizGroups[title] = [];
+      }
+      
+      quizGroups[title].push({
+        question: `${questionGujarati} / ${questionEnglish}`,
+        question_gujarati: questionGujarati,
+        options: options.filter(opt => opt && opt.length > 0),
+        correct_answer: correctAnswer,
+        explanation: ''
+      });
+    }
+    
+    let createdCount = 0;
+    let updatedCount = 0;
+    
+    for (const [title, questions] of Object.entries(quizGroups)) {
+      if (questions.length === 0) continue;
+      
+      const { data: existingQuiz } = await supabase
+        .from('quizzes')
+        .select('id')
+        .eq('title', title)
+        .eq('created_by', user!.id)
+        .maybeSingle();
+      
+      if (existingQuiz) {
+        const { error } = await supabase
+          .from('quizzes')
+          .update({
+            questions: questions as any,
+            description: `Updated ${title} - Imported from CSV with ${questions.length} questions`
+          })
+          .eq('id', existingQuiz.id);
+          
+        if (!error) {
+          updatedCount++;
+        }
+      } else {
+        const { error } = await supabase
+          .from('quizzes')
+          .insert({
+            title,
+            description: `${title} - Imported from CSV with ${questions.length} questions`,
+            quiz_type: 'game',
+            difficulty_level: 2,
+            time_limit: 15,
+            questions: questions as any,
+            created_by: user!.id
+          });
+          
+        if (!error) {
+          createdCount++;
+        }
+      }
+    }
+    
+    return { createdCount, updatedCount };
+  };
+
+  const parseVocabularyCSV = async (lines: string[]) => {
+    let createdCount = 0;
+    
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(val => val.replace(/"/g, '').trim());
+      
+      if (values.length < 3) continue;
+      
+      const englishWord = values[0];
+      const gujaratiWord = values[1];
+      const transliteration = values[2] || '';
+      const difficultyLevel = parseInt(values[3]) || 1;
+      
+      if (!englishWord || !gujaratiWord) continue;
+      
+      // Check if vocabulary already exists
+      const { data: existing } = await supabase
+        .from('vocabulary')
+        .select('id')
+        .eq('english_word', englishWord)
+        .eq('gujarati_word', gujaratiWord)
+        .maybeSingle();
+      
+      if (!existing) {
+        const { error } = await supabase
+          .from('vocabulary')
+          .insert({
+            english_word: englishWord,
+            gujarati_word: gujaratiWord,
+            gujarati_transliteration: transliteration,
+            difficulty_level: difficultyLevel,
+            created_by: user!.id
+          });
+          
+        if (!error) {
+          createdCount++;
+        }
+      }
+    }
+    
+    return { createdCount, updatedCount: 0 };
+  };
+
+  const parseDialogueCSV = async (lines: string[]) => {
+    const dialogueGroups: Record<string, any[]> = {};
+    
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(val => val.replace(/"/g, '').trim());
+      
+      if (values.length < 5) continue;
+      
+      const title = values[0] || 'Imported Dialogue';
+      const speaker = values[1];
+      const english = values[2];
+      const gujarati = values[3];
+      const transliteration = values[4] || '';
+      
+      if (!speaker || !english || !gujarati) continue;
+      
+      if (!dialogueGroups[title]) {
+        dialogueGroups[title] = [];
+      }
+      
+      dialogueGroups[title].push({
+        speaker,
+        english,
+        gujarati,
+        transliteration
+      });
+    }
+    
+    let createdCount = 0;
+    
+    for (const [title, dialogueData] of Object.entries(dialogueGroups)) {
+      if (dialogueData.length === 0) continue;
+      
+      const { error } = await supabase
+        .from('dialogues')
+        .insert({
+          title,
+          description: `${title} - Imported from CSV with ${dialogueData.length} steps`,
+          scenario: 'Imported conversation',
+          dialogue_data: dialogueData as any,
+          difficulty_level: 2,
+          created_by: user!.id
+        });
+        
+      if (!error) {
+        createdCount++;
+      }
+    }
+    
+    return { createdCount, updatedCount: 0 };
+  };
+
+  const getFormatInstructions = () => {
+    switch (uploadType) {
+      case 'quiz':
+        return (
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p><strong>Quiz CSV Format:</strong></p>
+            <p>• Column 1: Quiz Title</p>
+            <p>• Column 2: Type (optional)</p>
+            <p>• Column 3: Description (optional)</p>
+            <p>• Column 4: Question in Gujarati</p>
+            <p>• Column 5: Question in English</p>
+            <p>• Column 6-9: Answer Options A-D</p>
+            <p>• Column 10: Correct Answer</p>
+          </div>
+        );
+      case 'vocabulary':
+        return (
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p><strong>Vocabulary CSV Format:</strong></p>
+            <p>• Column 1: English Word</p>
+            <p>• Column 2: Gujarati Word</p>
+            <p>• Column 3: Transliteration (optional)</p>
+            <p>• Column 4: Difficulty Level (1-5, optional)</p>
+          </div>
+        );
+      case 'dialogue':
+        return (
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p><strong>Dialogue CSV Format:</strong></p>
+            <p>• Column 1: Dialogue Title</p>
+            <p>• Column 2: Speaker Name</p>
+            <p>• Column 3: English Text</p>
+            <p>• Column 4: Gujarati Text</p>
+            <p>• Column 5: Transliteration (optional)</p>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const getSuccessMessage = (createdCount: number, updatedCount: number) => {
+    switch (uploadType) {
+      case 'quiz':
+        return `${createdCount} new quizzes created, ${updatedCount} existing quizzes updated`;
+      case 'vocabulary':
+        return `${createdCount} new vocabulary words added`;
+      case 'dialogue':
+        return `${createdCount} new dialogues created`;
+      default:
+        return `${createdCount} items created, ${updatedCount} items updated`;
+    }
+  };
+
   const handleUpload = async () => {
     if (!file || !user) return;
     
@@ -142,11 +313,11 @@ export const CSVUploader = ({ onUploadSuccess }: CSVUploaderProps) => {
     
     try {
       const csvText = await file.text();
-      const { createdCount, updatedCount } = await parseCSVAndCreateQuizzes(csvText);
+      const { createdCount, updatedCount } = await parseCSVAndCreateContent(csvText);
       
       toast({
         title: "CSV Upload Successful",
-        description: `${createdCount} new quizzes created, ${updatedCount} existing quizzes updated`
+        description: getSuccessMessage(createdCount, updatedCount)
       });
       
       clearFile();
@@ -169,10 +340,10 @@ export const CSVUploader = ({ onUploadSuccess }: CSVUploaderProps) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Upload className="h-5 w-5" />
-          Upload Quiz CSV
+          {title}
         </CardTitle>
         <CardDescription>
-          Upload a CSV file to bulk create or update quizzes. Format: Title, Type, Description, Question (Gujarati), Question (English), Option A, Option B, Option C, Option D, Correct Answer
+          {description}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -220,16 +391,7 @@ export const CSVUploader = ({ onUploadSuccess }: CSVUploaderProps) => {
           </Button>
         </div>
 
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p><strong>CSV Format:</strong></p>
-          <p>• Column 1: Quiz Title</p>
-          <p>• Column 2: Type (optional)</p>
-          <p>• Column 3: Description (optional)</p>
-          <p>• Column 4: Question in Gujarati</p>
-          <p>• Column 5: Question in English</p>
-          <p>• Column 6-9: Answer Options A-D</p>
-          <p>• Column 10: Correct Answer</p>
-        </div>
+        {getFormatInstructions()}
       </CardContent>
     </Card>
   );

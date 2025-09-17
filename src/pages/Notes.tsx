@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Plus, Upload, Trash2, Download } from 'lucide-react';
+import { FileText, Plus, Upload, Trash2, Download, Image } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface Note {
@@ -32,12 +32,23 @@ const Notes = () => {
     description: '',
     image_url: ''
   });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
 
   const isTeacher = profile?.role === 'teacher';
 
   useEffect(() => {
     fetchNotes();
   }, []);
+
+  // Clean up preview URL when component unmounts or file changes
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const fetchNotes = async () => {
     try {
@@ -59,9 +70,13 @@ const Notes = () => {
     }
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      setSelectedFile(null);
+      setPreviewUrl('');
+      return;
+    }
 
     if (!file.type.startsWith('image/')) {
       toast({
@@ -72,15 +87,38 @@ const Notes = () => {
       return;
     }
 
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedFile(file);
+    
+    // Create preview URL
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    const newPreviewUrl = URL.createObjectURL(file);
+    setPreviewUrl(newPreviewUrl);
+  };
+
+  const uploadImage = async () => {
+    if (!selectedFile) return null;
+
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `note_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('notes')
-        .upload(filePath, file);
+        .upload(filePath, selectedFile);
 
       if (uploadError) throw uploadError;
 
@@ -88,38 +126,43 @@ const Notes = () => {
         .from('notes')
         .getPublicUrl(filePath);
 
-      setNewNote({ ...newNote, image_url: publicUrl });
-      
-      toast({
-        title: "Success",
-        description: "Image uploaded successfully!",
-      });
+      return publicUrl;
     } catch (error: any) {
+      console.error('Upload error:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to upload image",
         variant: "destructive",
       });
+      return null;
     } finally {
       setUploading(false);
     }
   };
 
   const handleCreateNote = async () => {
-    if (!newNote.title || !newNote.image_url) {
+    if (!newNote.title || !selectedFile) {
       toast({
         title: "Error",
-        description: "Please fill in the title and upload an image.",
+        description: "Please fill in the title and select an image.",
         variant: "destructive",
       });
       return;
     }
 
     try {
+      // Upload image first
+      const imageUrl = await uploadImage();
+      if (!imageUrl) {
+        return; // Error already shown in uploadImage
+      }
+
       const { error } = await supabase
         .from('notes')
         .insert([{
-          ...newNote,
+          title: newNote.title,
+          description: newNote.description,
+          image_url: imageUrl,
           created_by: profile?.user_id
         }]);
 
@@ -130,11 +173,14 @@ const Notes = () => {
         description: "Note created successfully!",
       });
 
+      // Reset form
       setNewNote({
         title: '',
         description: '',
         image_url: ''
       });
+      setSelectedFile(null);
+      setPreviewUrl('');
       setIsCreating(false);
       fetchNotes();
     } catch (error: any) {
@@ -147,6 +193,10 @@ const Notes = () => {
   };
 
   const handleDeleteNote = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this note?')) {
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('notes')
@@ -166,6 +216,19 @@ const Notes = () => {
         description: error.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const resetForm = () => {
+    setNewNote({
+      title: '',
+      description: '',
+      image_url: ''
+    });
+    setSelectedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl('');
     }
   };
 

@@ -16,6 +16,7 @@ export const useTimeTracking = (options: UseTimeTrackingOptions = {}) => {
   const pageVisitsRef = useRef<Record<string, number>>({});
   const activitiesRef = useRef<number>(0);
   const [isTracking, setIsTracking] = useState(false);
+  const lastUpdateRef = useRef<Date | null>(null);
 
   // Start session when user is available
   useEffect(() => {
@@ -34,16 +35,18 @@ export const useTimeTracking = (options: UseTimeTrackingOptions = {}) => {
   useEffect(() => {
     if (sessionIdRef.current && pageName !== 'unknown') {
       pageVisitsRef.current[pageName] = (pageVisitsRef.current[pageName] || 0) + 1;
+      // Update session immediately when page changes
+      updateSession();
     }
   }, [pageName]);
 
-  // Update session every 30 seconds
+  // Update session every 60 seconds
   useEffect(() => {
     if (!sessionIdRef.current || !startTimeRef.current) return;
 
     const interval = setInterval(() => {
       updateSession();
-    }, 30000); // Update every 30 seconds
+    }, 60000); // Update every 60 seconds
 
     return () => clearInterval(interval);
   }, [sessionIdRef.current]);
@@ -53,6 +56,7 @@ export const useTimeTracking = (options: UseTimeTrackingOptions = {}) => {
 
     try {
       startTimeRef.current = new Date();
+      lastUpdateRef.current = startTimeRef.current;
       pageVisitsRef.current = { [pageName]: 1 };
       activitiesRef.current = 0;
 
@@ -62,7 +66,8 @@ export const useTimeTracking = (options: UseTimeTrackingOptions = {}) => {
           user_id: user.id,
           session_start: startTimeRef.current.toISOString(),
           page_visits: pageVisitsRef.current,
-          activities_completed: 0
+          activities_completed: 0,
+          total_time_minutes: 0
         })
         .select('id')
         .single();
@@ -82,13 +87,15 @@ export const useTimeTracking = (options: UseTimeTrackingOptions = {}) => {
     try {
       const currentTime = new Date();
       const totalMinutes = Math.floor((currentTime.getTime() - startTimeRef.current.getTime()) / 60000);
+      lastUpdateRef.current = currentTime;
 
       await supabase
         .from('app_usage_sessions')
         .update({
           total_time_minutes: totalMinutes,
           page_visits: pageVisitsRef.current,
-          activities_completed: activitiesRef.current
+          activities_completed: activitiesRef.current,
+          updated_at: currentTime.toISOString()
         })
         .eq('id', sessionIdRef.current);
     } catch (error) {
@@ -109,12 +116,14 @@ export const useTimeTracking = (options: UseTimeTrackingOptions = {}) => {
           session_end: endTime.toISOString(),
           total_time_minutes: totalMinutes,
           page_visits: pageVisitsRef.current,
-          activities_completed: activitiesRef.current
+          activities_completed: activitiesRef.current,
+          updated_at: endTime.toISOString()
         })
         .eq('id', sessionIdRef.current);
 
       sessionIdRef.current = null;
       startTimeRef.current = null;
+      lastUpdateRef.current = null;
       setIsTracking(false);
     } catch (error) {
       console.error('Failed to end session:', error);
@@ -124,6 +133,8 @@ export const useTimeTracking = (options: UseTimeTrackingOptions = {}) => {
   const incrementActivity = () => {
     if (trackActivities) {
       activitiesRef.current += 1;
+      // Update session when activity is completed
+      updateSession();
     }
   };
 
@@ -134,7 +145,8 @@ export const useTimeTracking = (options: UseTimeTrackingOptions = {}) => {
       ? Math.floor((new Date().getTime() - startTimeRef.current.getTime()) / 60000)
       : 0,
     activitiesCompleted: activitiesRef.current,
-    pageVisits: { ...pageVisitsRef.current }
+    pageVisits: { ...pageVisitsRef.current },
+    lastUpdate: lastUpdateRef.current
   });
 
   return {

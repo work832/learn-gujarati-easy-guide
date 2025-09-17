@@ -46,6 +46,15 @@ const StudentProgress = () => {
     fetchStudentProgress();
   }, [user]);
 
+  // Auto-refresh data every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchStudentProgress();
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchStudentProgress = async () => {
     if (!user) return;
 
@@ -95,7 +104,7 @@ const StudentProgress = () => {
         // App usage sessions for time tracking
         const { data: usageSessions } = await supabase
           .from('app_usage_sessions')
-          .select('total_time_minutes, session_start, session_end')
+          .select('total_time_minutes, session_start, session_end, updated_at, activities_completed')
           .eq('user_id', student.user_id)
           .order('created_at', { ascending: false });
 
@@ -103,7 +112,14 @@ const StudentProgress = () => {
         const sessionTime = usageSessions?.reduce((sum, session) => 
           sum + (session.total_time_minutes || 0), 0) || 0;
         
-        const lastActive = usageSessions?.[0]?.session_start || student.created_at;
+        // Get the most recent activity (either session start or last update)
+        const lastActive = usageSessions?.[0]?.updated_at || 
+                          usageSessions?.[0]?.session_start || 
+                          student.created_at;
+
+        // Calculate total activities from all sessions
+        const totalActivities = usageSessions?.reduce((sum, session) => 
+          sum + (session.activities_completed || 0), 0) || 0;
 
         // Calculate average score and total time
         const totalQuizzes = quizAttempts?.length || 0;
@@ -124,7 +140,8 @@ const StudentProgress = () => {
           total_time: Math.round(totalTime / 60), // Convert to minutes
           achievements: achievementsCount || 0,
           session_time: sessionTime,
-          last_active: lastActive
+          last_active: lastActive,
+          total_activities: totalActivities
         };
       });
 
@@ -156,6 +173,18 @@ const StudentProgress = () => {
     ? Math.round(students.reduce((sum, s) => sum + s.avg_score, 0) / totalStudents) 
     : 0;
   const totalSessionTime = students.reduce((sum, s) => sum + s.session_time, 0);
+
+  const formatLastActive = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    return date.toLocaleDateString();
+  };
 
   if (loading) {
     return (
@@ -325,21 +354,28 @@ const StudentProgress = () => {
                   </div>
                   
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Achievements: {studentData.achievements}</span>
-                    <span>Last Active: {new Date(studentData.last_active).toLocaleDateString()}</span>
+                    <span>Activities: {studentData.total_activities || 0}</span>
+                    <span>Last Active: {formatLastActive(studentData.last_active)}</span>
                   </div>
 
                   {/* Activity Level Badge */}
                   <div className="flex justify-center">
-                    {studentData.flashcards_count + studentData.practice_sessions + studentData.quiz_attempts === 0 ? (
-                      <Badge variant="outline" className="text-gray-500">Inactive</Badge>
-                    ) : studentData.avg_score >= 80 ? (
-                      <Badge className="bg-green-500 text-white">Excellent</Badge>
-                    ) : studentData.avg_score >= 60 ? (
-                      <Badge className="bg-yellow-500 text-white">Good</Badge>
-                    ) : (
-                      <Badge className="bg-blue-500 text-white">Learning</Badge>
-                    )}
+                    {(() => {
+                      const totalActivity = studentData.flashcards_count + studentData.practice_sessions + studentData.quiz_attempts;
+                      const lastActiveHours = Math.floor((new Date().getTime() - new Date(studentData.last_active).getTime()) / (1000 * 60 * 60));
+                      
+                      if (totalActivity === 0) {
+                        return <Badge variant="outline" className="text-gray-500">No Activity</Badge>;
+                      } else if (lastActiveHours < 24) {
+                        return <Badge className="bg-green-500 text-white">Active Today</Badge>;
+                      } else if (lastActiveHours < 168) { // 7 days
+                        return <Badge className="bg-yellow-500 text-white">Active This Week</Badge>;
+                      } else if (studentData.avg_score >= 80) {
+                        return <Badge className="bg-blue-500 text-white">High Performer</Badge>;
+                      } else {
+                        return <Badge variant="outline">Needs Attention</Badge>;
+                      }
+                    })()}
                   </div>
                 </CardContent>
               </Card>

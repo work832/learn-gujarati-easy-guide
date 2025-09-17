@@ -267,6 +267,20 @@ const CreateContent = () => {
                 <CardDescription>Create new vocabulary words for students to learn</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* CSV Upload for Vocabulary */}
+                <CSVUploader 
+                  uploadType="vocabulary"
+                  title="Upload Vocabulary CSV"
+                  description="Upload a CSV file to bulk add vocabulary words"
+                  onUploadSuccess={() => {}} 
+                />
+                
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 h-px bg-border"></div>
+                  <span className="bg-background px-2 text-muted-foreground">Or add manually</span>
+                  <div className="flex-1 h-px bg-border"></div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="english">English Word *</Label>
@@ -305,7 +319,12 @@ const CreateContent = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* CSV Upload Section */}
-                <CSVUploader onUploadSuccess={loadExistingContent} />
+                <CSVUploader 
+                  uploadType="quiz"
+                  title="Upload Quiz CSV"
+                  description="Upload a CSV file to bulk create or update quizzes"
+                  onUploadSuccess={loadExistingContent} 
+                />
                 
                 <div className="flex items-center gap-4">
                   <div className="flex-1 h-px bg-border"></div>
@@ -367,6 +386,77 @@ const CreateContent = () => {
             </Card>
           </TabsContent>
 
+          <TabsContent value="dialogues">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5" />
+                  Create Dialogue
+                </CardTitle>
+                <CardDescription>Create conversation practice dialogues</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* CSV Upload for Dialogues */}
+                <CSVUploader 
+                  uploadType="dialogue"
+                  title="Upload Dialogue CSV"
+                  description="Upload a CSV file to bulk create dialogues"
+                  onUploadSuccess={loadExistingContent} 
+                />
+                
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 h-px bg-border"></div>
+                  <span className="bg-background px-2 text-muted-foreground">Or create manually</span>
+                  <div className="flex-1 h-px bg-border"></div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="dialogue-title">Title *</Label>
+                    <Input
+                      id="dialogue-title"
+                      value={dialogueForm.title}
+                      onChange={(e) => setDialogueForm(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="Enter dialogue title"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="scenario">Scenario *</Label>
+                    <Input
+                      id="scenario"
+                      value={dialogueForm.scenario}
+                      onChange={(e) => setDialogueForm(prev => ({ ...prev, scenario: e.target.value }))}
+                      placeholder="e.g., At a restaurant"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="dialogue-description">Description</Label>
+                  <Textarea
+                    id="dialogue-description"
+                    value={dialogueForm.description}
+                    onChange={(e) => setDialogueForm(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Describe the dialogue context"
+                  />
+                </div>
+
+                <Button 
+                  onClick={() => {
+                    // Create dialogue functionality would go here
+                    toast({
+                      title: "Feature Coming Soon",
+                      description: "Manual dialogue creation will be available soon. Please use CSV upload for now.",
+                    });
+                  }} 
+                  disabled={loading}
+                >
+                  {loading ? 'Creating...' : 'Create Dialogue'}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="manage">
             <Card>
               <CardHeader>
@@ -377,7 +467,67 @@ const CreateContent = () => {
                 {managementLoading ? (
                   <div className="text-center py-8">Loading content...</div>
                 ) : (
-                  <div className="text-center py-8">Content management interface</div>
+                  <div className="space-y-6">
+                    {/* Vocabulary Management */}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Vocabulary ({existingVocabulary.length})</h3>
+                      {existingVocabulary.length > 0 ? (
+                        <div className="grid gap-2 max-h-40 overflow-y-auto">
+                          {existingVocabulary.slice(0, 5).map((vocab: any) => (
+                            <div key={vocab.id} className="flex justify-between items-center p-2 bg-muted rounded">
+                              <span className="text-sm">{vocab.english_word} - {vocab.gujarati_word}</span>
+                              <Badge variant="outline">Level {vocab.difficulty_level}</Badge>
+                            </div>
+                          ))}
+                          {existingVocabulary.length > 5 && (
+                            <p className="text-sm text-muted-foreground">...and {existingVocabulary.length - 5} more</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No vocabulary created yet</p>
+                      )}
+                    </div>
+
+                    {/* Quiz Management */}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Quizzes ({existingQuizzes.length})</h3>
+                      {existingQuizzes.length > 0 ? (
+                        <div className="grid gap-2 max-h-40 overflow-y-auto">
+                          {existingQuizzes.slice(0, 5).map((quiz: any) => (
+                            <div key={quiz.id} className="flex justify-between items-center p-2 bg-muted rounded">
+                              <span className="text-sm">{quiz.title}</span>
+                              <Badge variant="outline">{quiz.questions?.length || 0} questions</Badge>
+                            </div>
+                          ))}
+                          {existingQuizzes.length > 5 && (
+                            <p className="text-sm text-muted-foreground">...and {existingQuizzes.length - 5} more</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No quizzes created yet</p>
+                      )}
+                    </div>
+
+                    {/* Dialogue Management */}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Dialogues ({existingDialogues.length})</h3>
+                      {existingDialogues.length > 0 ? (
+                        <div className="grid gap-2 max-h-40 overflow-y-auto">
+                          {existingDialogues.slice(0, 5).map((dialogue: any) => (
+                            <div key={dialogue.id} className="flex justify-between items-center p-2 bg-muted rounded">
+                              <span className="text-sm">{dialogue.title}</span>
+                              <Badge variant="outline">{dialogue.dialogue_data?.length || 0} steps</Badge>
+                            </div>
+                          ))}
+                          {existingDialogues.length > 5 && (
+                            <p className="text-sm text-muted-foreground">...and {existingDialogues.length - 5} more</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No dialogues created yet</p>
+                      )}
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>

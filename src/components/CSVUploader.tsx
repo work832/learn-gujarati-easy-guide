@@ -71,15 +71,6 @@ export const CSVUploader = ({
       } else if (uploadType === 'dialogue') {
         const result = await parseDialogueCSV(lines);
         createdCount = result.createdCount;
-      } else if (uploadType === 'word_bank') {
-        const result = await parseWordBankCSV(lines);
-        createdCount = result.createdCount;
-      } else if (uploadType === 'basic_learning') {
-        const result = await parseBasicLearningCSV(lines);
-        createdCount = result.createdCount;
-      } else if (uploadType === 'games') {
-        const result = await parseGamesCSV(lines);
-        createdCount = result.createdCount;
       }
       
       return { createdCount, updatedCount };
@@ -261,6 +252,153 @@ export const CSVUploader = ({
     return { createdCount, updatedCount: 0 };
   };
 
+  const parseWordBankCSV = async (lines: string[]) => {
+    let createdCount = 0;
+    
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(val => val.replace(/"/g, '').trim());
+      
+      if (values.length < 4) continue;
+      
+      const wordType = values[0]; // synonym, antonym, idiom
+      const gujaratiWord = values[1];
+      const englishWord = values[2];
+      const gujaratiMeaning = values[3] || '';
+      const englishMeaning = values[4] || '';
+      const exampleGujarati = values[5] || '';
+      const exampleEnglish = values[6] || '';
+      const difficultyLevel = parseInt(values[7]) || 1;
+      
+      if (!wordType || !gujaratiWord || !englishWord) continue;
+      if (!['synonym', 'antonym', 'idiom'].includes(wordType)) continue;
+      
+      const { data: existing } = await supabase
+        .from('word_bank')
+        .select('id')
+        .eq('gujarati_word', gujaratiWord)
+        .eq('english_word', englishWord)
+        .eq('word_type', wordType)
+        .maybeSingle();
+      
+      if (!existing) {
+        const { error } = await supabase
+          .from('word_bank')
+          .insert({
+            word_type: wordType,
+            gujarati_word: gujaratiWord,
+            english_word: englishWord,
+            gujarati_meaning: gujaratiMeaning,
+            english_meaning: englishMeaning,
+            example_sentence_gujarati: exampleGujarati,
+            example_sentence_english: exampleEnglish,
+            difficulty_level: difficultyLevel,
+            created_by: user!.id
+          });
+          
+        if (!error) {
+          createdCount++;
+        }
+      }
+    }
+    
+    return { createdCount, updatedCount: 0 };
+  };
+
+  const parseBasicLearningCSV = async (lines: string[]) => {
+    let createdCount = 0;
+    
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(val => val.replace(/"/g, '').trim());
+      
+      if (values.length < 3) continue;
+      
+      const contentType = values[0]; // alphabet, number, basic_word
+      const englishContent = values[1];
+      const gujaratiContent = values[2];
+      const transliteration = values[3] || '';
+      const orderSequence = parseInt(values[4]) || null;
+      const difficultyLevel = parseInt(values[5]) || 1;
+      
+      if (!contentType || !englishContent || !gujaratiContent) continue;
+      if (!['alphabet', 'number', 'basic_word'].includes(contentType)) continue;
+      
+      const { data: existing } = await supabase
+        .from('basic_learning')
+        .select('id')
+        .eq('english_content', englishContent)
+        .eq('gujarati_content', gujaratiContent)
+        .eq('content_type', contentType)
+        .maybeSingle();
+      
+      if (!existing) {
+        const { error } = await supabase
+          .from('basic_learning')
+          .insert({
+            content_type: contentType,
+            english_content: englishContent,
+            gujarati_content: gujaratiContent,
+            transliteration: transliteration,
+            order_sequence: orderSequence,
+            difficulty_level: difficultyLevel,
+            created_by: user!.id
+          });
+          
+        if (!error) {
+          createdCount++;
+        }
+      }
+    }
+    
+    return { createdCount, updatedCount: 0 };
+  };
+
+  const parseGamesCSV = async (lines: string[]) => {
+    let createdCount = 0;
+    
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(val => val.replace(/"/g, '').trim());
+      
+      if (values.length < 5) continue;
+      
+      const title = values[0];
+      const gameType = values[1]; // match_following, fill_blanks
+      const description = values[2];
+      const gameDataStr = values[3]; // JSON string
+      const difficultyLevel = parseInt(values[4]) || 1;
+      const timeLimit = parseInt(values[5]) || 300;
+      const maxScore = parseInt(values[6]) || 100;
+      
+      if (!title || !gameType || !gameDataStr) continue;
+      if (!['match_following', 'fill_blanks', 'word_puzzle'].includes(gameType)) continue;
+      
+      let gameData;
+      try {
+        gameData = JSON.parse(gameDataStr);
+      } catch (e) {
+        continue; // Skip invalid JSON
+      }
+      
+      const { error } = await supabase
+        .from('interactive_games')
+        .insert({
+          title,
+          description,
+          game_type: gameType,
+          game_data: gameData,
+          difficulty_level: difficultyLevel,
+          time_limit: timeLimit,
+          max_score: maxScore,
+          created_by: user!.id
+        });
+        
+      if (!error) {
+        createdCount++;
+      }
+    }
+    
+    return { createdCount, updatedCount: 0 };
+  };
+
   const getFormatInstructions = () => {
     switch (uploadType) {
       case 'quiz':
@@ -286,6 +424,20 @@ export const CSVUploader = ({
             <p>• Column 4: Difficulty Level (1-5, optional)</p>
           </div>
         );
+      case 'word_bank':
+        return (
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p><strong>Word Bank CSV Format:</strong></p>
+            <p>• Column 1: Word Type (synonym/antonym/idiom)</p>
+            <p>• Column 2: Gujarati Word/Phrase</p>
+            <p>• Column 3: English Word/Phrase</p>
+            <p>• Column 4: Gujarati Meaning</p>
+            <p>• Column 5: English Meaning (optional)</p>
+            <p>• Column 6: Example Gujarati Sentence (optional)</p>
+            <p>• Column 7: Example English Sentence (optional)</p>
+            <p>• Column 8: Difficulty Level (1-5, optional)</p>
+          </div>
+        );
       case 'dialogue':
         return (
           <div className="text-xs text-muted-foreground space-y-1">
@@ -295,6 +447,31 @@ export const CSVUploader = ({
             <p>• Column 3: English Text</p>
             <p>• Column 4: Gujarati Text</p>
             <p>• Column 5: Transliteration (optional)</p>
+          </div>
+        );
+      case 'basic_learning':
+        return (
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p><strong>Basic Learning CSV Format:</strong></p>
+            <p>• Column 1: Content Type (alphabet/number/basic_word)</p>
+            <p>• Column 2: English Content</p>
+            <p>• Column 3: Gujarati Content</p>
+            <p>• Column 4: Transliteration (optional)</p>
+            <p>• Column 5: Order Sequence (optional)</p>
+            <p>• Column 6: Difficulty Level (1-5, optional)</p>
+          </div>
+        );
+      case 'games':
+        return (
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p><strong>Games CSV Format:</strong></p>
+            <p>• Column 1: Game Title</p>
+            <p>• Column 2: Game Type (match_following/fill_blanks)</p>
+            <p>• Column 3: Description</p>
+            <p>• Column 4: Game Data (JSON format)</p>
+            <p>• Column 5: Difficulty Level (1-5)</p>
+            <p>• Column 6: Time Limit (seconds, optional)</p>
+            <p>• Column 7: Max Score (optional)</p>
           </div>
         );
       default:
@@ -308,6 +485,12 @@ export const CSVUploader = ({
         return `${createdCount} new quizzes created, ${updatedCount} existing quizzes updated`;
       case 'vocabulary':
         return `${createdCount} new vocabulary words added`;
+      case 'word_bank':
+        return `${createdCount} new word bank entries added`;
+      case 'basic_learning':
+        return `${createdCount} new basic learning items added`;
+      case 'games':
+        return `${createdCount} new interactive games created`;
       case 'dialogue':
         return `${createdCount} new dialogues created`;
       default:

@@ -341,6 +341,11 @@ const Notes = () => {
               {note.description && (
                 <CardDescription>{note.description}</CardDescription>
               )}
+              {note.text_content && (
+                <div className="mt-2 p-3 bg-muted rounded-lg">
+                  <p className="text-sm whitespace-pre-wrap">{note.text_content}</p>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="relative group">

@@ -1,71 +1,60 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { GamepadIcon, Star, Trophy, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Gamepad2, Star, Trophy, Clock, CheckCircle, Target, Puzzle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTimeTracking } from '@/hooks/useTimeTracking';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 
-interface Quiz {
+interface InteractiveGame {
   id: string;
   title: string;
   description: string;
-  quiz_type: string;
+  game_type: 'match_following' | 'fill_blanks' | 'word_puzzle';
+  game_data: any;
   difficulty_level: number;
-  time_limit?: number;
-  questions: any[];
+  time_limit: number;
+  max_score: number;
 }
 
 interface GameSession {
   score: number;
   timeSpent: number;
-  questionsCorrect: number;
-  totalQuestions: number;
-}
-
-interface CompletedQuiz {
-  quiz_id: string;
-  completed: boolean;
+  correctAnswers: number;
+  totalItems: number;
 }
 
 const Games = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { incrementActivity } = useTimeTracking({ pageName: 'games' });
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [currentGame, setCurrentGame] = useState<Quiz | null>(null);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string>('');
+  const [games, setGames] = useState<InteractiveGame[]>([]);
+  const [currentGame, setCurrentGame] = useState<InteractiveGame | null>(null);
   const [gameSession, setGameSession] = useState<GameSession>({
     score: 0,
     timeSpent: 0,
-    questionsCorrect: 0,
-    totalQuestions: 0
+    correctAnswers: 0,
+    totalItems: 0
   });
   const [gameStartTime, setGameStartTime] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
   const [gameComplete, setGameComplete] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(15);
-  const [showAnswer, setShowAnswer] = useState(false);
-  const [isAnswered, setIsAnswered] = useState(false);
-  const [shuffledQuestions, setShuffledQuestions] = useState<any[]>([]);
-  const [completedQuizzes, setCompletedQuizzes] = useState<CompletedQuiz[]>([]);
-  const [correctAnswer, setCorrectAnswer] = useState<string>('');
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes default
+  const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
+  const [showResults, setShowResults] = useState(false);
 
   useEffect(() => {
     fetchGames();
-    if (user) {
-      fetchCompletedQuizzes();
-    }
   }, [user]);
 
   // Timer effect
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (currentGame && !gameComplete && !showAnswer && timeLeft > 0 && !isAnswered) {
+    if (currentGame && !gameComplete && !showResults && timeLeft > 0) {
       timer = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
@@ -77,21 +66,17 @@ const Games = () => {
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [currentGame, gameComplete, showAnswer, timeLeft, isAnswered]);
+  }, [currentGame, gameComplete, showResults, timeLeft]);
 
   const fetchGames = async () => {
     try {
       const { data, error } = await supabase
-        .from('quizzes')
+        .from('interactive_games')
         .select('*')
-        .in('quiz_type', ['game', 'quiz'])
         .order('difficulty_level');
 
       if (error) throw error;
-      setQuizzes((data || []).map(quiz => ({
-        ...quiz,
-        questions: Array.isArray(quiz.questions) ? quiz.questions : []
-      })));
+      setGames(data || []);
     } catch (error) {
       console.error('Error fetching games:', error);
       toast({
@@ -104,186 +89,97 @@ const Games = () => {
     }
   };
 
-  const fetchCompletedQuizzes = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('quiz_attempts')
-        .select('quiz_id')
-        .eq('user_id', user.id);
-      
-      if (error) throw error;
-      
-      const completed = (data || []).map(attempt => ({
-        quiz_id: attempt.quiz_id,
-        completed: true
-      }));
-      
-      setCompletedQuizzes(completed);
-    } catch (error) {
-      console.error('Error fetching completed quizzes:', error);
-    }
-  };
-
-  const shuffleArray = <T,>(array: T[]): T[] => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
-
-  const startGame = (quiz: Quiz) => {
-    // Shuffle questions for randomization
-    const shuffled = shuffleArray(quiz.questions);
-    setShuffledQuestions(shuffled);
-    
-    setCurrentGame(quiz);
-    setCurrentQuestion(0);
-    setSelectedAnswer('');
+  const startGame = (game: InteractiveGame) => {
+    setCurrentGame(game);
     setGameSession({
       score: 0,
       timeSpent: 0,
-      questionsCorrect: 0,
-      totalQuestions: shuffled.length
+      correctAnswers: 0,
+      totalItems: game.game_data?.items?.length || game.game_data?.blanks?.length || 0
     });
     setGameStartTime(new Date());
     setGameComplete(false);
-    setTimeLeft(15);
-    setShowAnswer(false);
-    setIsAnswered(false);
+    setTimeLeft(game.time_limit);
+    setUserAnswers({});
+    setShowResults(false);
   };
 
   const handleTimeUp = () => {
-    if (!currentGame) return;
-    
-    const question = shuffledQuestions[currentQuestion];
-    setCorrectAnswer(question.correct_answer);
-    setShowAnswer(true);
-    
-    setTimeout(() => {
-      nextQuestion();
-    }, 3000);
+    submitGame();
   };
 
-  const submitAnswer = () => {
-    if (!currentGame || !selectedAnswer || isAnswered) return;
-
-    setIsAnswered(true);
-    const question = shuffledQuestions[currentQuestion];
-    const isCorrect = selectedAnswer === question.correct_answer;
-    
-    setCorrectAnswer(question.correct_answer);
-
-    if (isCorrect) {
-      setGameSession(prev => ({
-        ...prev,
-        score: prev.score + 10,
-        questionsCorrect: prev.questionsCorrect + 1
-      }));
-      
-      incrementActivity(); // Track correct answer as activity
-      
-      toast({
-        title: "Correct! 🎉",
-        description: "+10 points",
-        variant: "default"
-      });
-    } else {
-      toast({
-        title: "Incorrect 😞",
-        description: `Correct answer: ${question.correct_answer}`,
-        variant: "destructive"
-      });
-    }
-
-    setShowAnswer(true);
-    
-    setTimeout(() => {
-      nextQuestion();
-    }, 3000);
-  };
-
-  const nextQuestion = () => {
-    if (currentQuestion < shuffledQuestions.length - 1) {
-      setCurrentQuestion(prev => prev + 1);
-      setSelectedAnswer('');
-      setTimeLeft(15);
-      setShowAnswer(false);
-      setIsAnswered(false);
-    } else {
-      finishGame();
-    }
-  };
-
-  const finishGame = async () => {
+  const submitGame = async () => {
     if (!currentGame || !gameStartTime || !user) return;
 
     const endTime = new Date();
     const timeSpent = Math.floor((endTime.getTime() - gameStartTime.getTime()) / 1000);
 
+    let correctCount = 0;
+    let totalItems = 0;
+
+    if (currentGame.game_type === 'match_following') {
+      totalItems = currentGame.game_data.pairs?.length || 0;
+      currentGame.game_data.pairs?.forEach((pair: any, index: number) => {
+        if (userAnswers[`pair_${index}`] === pair.gujarati) {
+          correctCount++;
+        }
+      });
+    } else if (currentGame.game_type === 'fill_blanks') {
+      totalItems = currentGame.game_data.blanks?.length || 0;
+      currentGame.game_data.blanks?.forEach((blank: any, index: number) => {
+        if (userAnswers[`blank_${index}`]?.toLowerCase().trim() === blank.answer.toLowerCase().trim()) {
+          correctCount++;
+        }
+      });
+    }
+
+    const finalScore = Math.round((correctCount / totalItems) * currentGame.max_score);
+
     const finalSession = {
-      ...gameSession,
-      timeSpent
+      score: finalScore,
+      timeSpent,
+      correctAnswers: correctCount,
+      totalItems
     };
 
-    // Check if user has already completed this quiz
-    const isAlreadyCompleted = completedQuizzes.some(cq => cq.quiz_id === currentGame.id);
-
     try {
-      // Save quiz attempt
-      const { error: attemptError } = await supabase.from('quiz_attempts').insert({
+      const { error } = await supabase.from('game_attempts').insert({
         user_id: user.id,
-        quiz_id: currentGame.id,
-        score: finalSession.score,
-        max_score: finalSession.totalQuestions * 10,
+        game_id: currentGame.id,
+        score: finalScore,
+        max_score: currentGame.max_score,
         time_taken: timeSpent,
-        answers: shuffledQuestions.map((q, index) => ({
-          question_id: index,
-          selected_answer: index <= currentQuestion ? selectedAnswer : null,
-          correct: index < currentQuestion ? selectedAnswer === q.correct_answer : false
-        }))
+        answers: userAnswers
       });
 
-      if (attemptError) throw attemptError;
+      if (error) throw error;
 
-      // Update user points only if not already completed
-      if (!isAlreadyCompleted) {
-        const { data: profileData, error: fetchError } = await supabase
-          .from('profiles')
-          .select('points')
-          .eq('user_id', user.id)
-          .single();
+      // Update user points
+      const { data: profileData, error: fetchError } = await supabase
+        .from('profiles')
+        .select('points')
+        .eq('user_id', user.id)
+        .single();
 
-        if (fetchError) throw fetchError;
+      if (fetchError) throw fetchError;
 
-        const currentPoints = profileData?.points || 0;
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ points: currentPoints + finalSession.score })
-          .eq('user_id', user.id);
+      const currentPoints = profileData?.points || 0;
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ points: currentPoints + finalScore })
+        .eq('user_id', user.id);
 
-        if (updateError) throw updateError;
+      if (updateError) throw updateError;
 
-        toast({
-          title: "Quiz Complete! 🎉",
-          description: `You earned ${finalSession.score} points!`
-        });
-      } else {
-        toast({
-          title: "Quiz Complete!",
-          description: "No points earned (already completed)"
-        });
-      }
+      incrementActivity();
 
-      // Update completed quizzes list
-      if (!isAlreadyCompleted) {
-        setCompletedQuizzes(prev => [...prev, { quiz_id: currentGame.id, completed: true }]);
-      }
+      toast({
+        title: "Game Complete! 🎉",
+        description: `You earned ${finalScore} points!`
+      });
 
       setGameSession(finalSession);
+      setShowResults(true);
       setGameComplete(true);
       
     } catch (error) {
@@ -296,9 +192,71 @@ const Games = () => {
     }
   };
 
-  const restartGame = () => {
-    setCurrentGame(null);
-    setGameComplete(false);
+  const renderMatchFollowingGame = () => {
+    if (!currentGame?.game_data?.pairs) return null;
+
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-center">Match the Following</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <h4 className="font-medium text-center">English</h4>
+            {currentGame.game_data.pairs.map((pair: any, index: number) => (
+              <div key={index} className="p-3 bg-muted rounded-lg text-center">
+                {pair.english}
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            <h4 className="font-medium text-center">Gujarati (Select Match)</h4>
+            {currentGame.game_data.pairs.map((pair: any, index: number) => (
+              <Button
+                key={index}
+                variant={userAnswers[`pair_${index}`] === pair.gujarati ? "default" : "outline"}
+                className="w-full p-3"
+                onClick={() => setUserAnswers(prev => ({ ...prev, [`pair_${index}`]: pair.gujarati }))}
+              >
+                {pair.gujarati}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderFillBlanksGame = () => {
+    if (!currentGame?.game_data?.paragraph || !currentGame?.game_data?.blanks) return null;
+
+    const paragraph = currentGame.game_data.paragraph;
+    const blanks = currentGame.game_data.blanks;
+
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-center">Fill in the Blanks</h3>
+        <div className="text-lg leading-relaxed p-4 bg-muted rounded-lg">
+          {paragraph.split('___').map((part: string, index: number) => (
+            <span key={index}>
+              {part}
+              {index < blanks.length && (
+                <Input
+                  className="inline-block w-32 mx-2"
+                  placeholder="?"
+                  value={userAnswers[`blank_${index}`] || ''}
+                  onChange={(e) => setUserAnswers(prev => ({ 
+                    ...prev, 
+                    [`blank_${index}`]: e.target.value 
+                  }))}
+                />
+              )}
+            </span>
+          ))}
+        </div>
+        <div className="text-sm text-muted-foreground text-center">
+          Fill in the blanks with appropriate Gujarati words
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -325,7 +283,7 @@ const Games = () => {
                 <div className="text-sm text-muted-foreground">Points Earned</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-primary">{gameSession.questionsCorrect}/{gameSession.totalQuestions}</div>
+                <div className="text-3xl font-bold text-primary">{gameSession.correctAnswers}/{gameSession.totalItems}</div>
                 <div className="text-sm text-muted-foreground">Correct Answers</div>
               </div>
               <div>
@@ -333,7 +291,7 @@ const Games = () => {
                 <div className="text-sm text-muted-foreground">Time Taken</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-primary">{Math.round((gameSession.questionsCorrect / gameSession.totalQuestions) * 100)}%</div>
+                <div className="text-3xl font-bold text-primary">{Math.round((gameSession.correctAnswers / gameSession.totalItems) * 100)}%</div>
                 <div className="text-sm text-muted-foreground">Accuracy</div>
               </div>
             </div>
@@ -341,7 +299,7 @@ const Games = () => {
               <Button onClick={() => startGame(currentGame)} variant="outline">
                 Play Again
               </Button>
-              <Button onClick={restartGame}>
+              <Button onClick={() => setCurrentGame(null)}>
                 Choose New Game
               </Button>
             </div>
@@ -352,105 +310,52 @@ const Games = () => {
   }
 
   if (currentGame) {
-    const question = shuffledQuestions[currentQuestion];
-    const progress = ((currentQuestion) / shuffledQuestions.length) * 100;
+    const progress = timeLeft > 0 ? ((currentGame.time_limit - timeLeft) / currentGame.time_limit) * 100 : 100;
     
     return (
       <div className="container mx-auto p-6">
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-primary">{currentGame.title}</h1>
             <Badge variant="secondary">
-              {currentQuestion + 1} / {shuffledQuestions.length}
+              {currentGame.game_type.replace('_', ' ').toUpperCase()}
             </Badge>
           </div>
 
           <div className="space-y-2">
-            <Progress value={progress} className="w-full" />
             <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Progress: {Math.round(progress)}%</span>
+              <span>Time Progress</span>
               <div className="flex items-center gap-2">
                 <Clock size={16} />
-                <span className={timeLeft <= 5 ? "text-red-500 font-bold" : ""}>{timeLeft}s</span>
+                <span className={timeLeft <= 30 ? "text-red-500 font-bold" : ""}>
+                  {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                </span>
               </div>
             </div>
+            <Progress value={progress} className="w-full" />
           </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-center text-lg">
-                {question.question_gujarati && (
-                  <div className="mb-2 text-2xl font-bold text-primary">
-                    {question.question_gujarati}
-                  </div>
-                )}
-                <div className="text-base text-muted-foreground">
-                  {question.question}
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {question.options.map((option: string, index: number) => {
-                let buttonVariant: "default" | "outline" | "destructive" | "secondary" = "outline";
-                let icon = null;
-                
-                if (showAnswer) {
-                  if (option === correctAnswer) {
-                    buttonVariant = "default";
-                    icon = <CheckCircle className="w-4 h-4 text-green-500" />;
-                  } else if (option === selectedAnswer && option !== correctAnswer) {
-                    buttonVariant = "destructive";
-                    icon = <XCircle className="w-4 h-4 text-red-500" />;
-                  }
-                } else if (selectedAnswer === option) {
-                  buttonVariant = "secondary";
-                }
-
-                return (
-                  <Button
-                    key={index}
-                    variant={buttonVariant}
-                    className="w-full text-left justify-between p-4 h-auto text-lg"
-                    onClick={() => !showAnswer && !isAnswered && setSelectedAnswer(option)}
-                    disabled={showAnswer || isAnswered}
-                  >
-                    <span className="text-right">{option}</span>
-                    {icon}
-                  </Button>
-                );
-              })}
+            <CardContent className="p-6">
+              {currentGame.game_type === 'match_following' && renderMatchFollowingGame()}
+              {currentGame.game_type === 'fill_blanks' && renderFillBlanksGame()}
               
-              {!showAnswer && (
-                <div className="flex justify-center pt-4">
-                  <Button 
-                    onClick={submitAnswer} 
-                    disabled={!selectedAnswer || isAnswered}
-                    size="lg"
-                    className="w-full"
-                  >
-                    Submit Answer
-                  </Button>
-                </div>
-              )}
-
-              {showAnswer && (
-                <div className="text-center pt-4">
-                  <div className="text-sm text-muted-foreground">
-                    {selectedAnswer === correctAnswer ? "Correct! 🎉" : "Moving to next question..."}
-                  </div>
-                </div>
-              )}
+              <div className="flex justify-center pt-6">
+                <Button onClick={submitGame} size="lg" className="w-full max-w-md">
+                  Submit Game
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
           <div className="flex justify-between text-sm">
             <div className="flex items-center gap-2 text-primary">
-              <Star size={16} />
-              Score: {gameSession.score}
+              <Target size={16} />
+              Max Score: {currentGame.max_score}
             </div>
             <div className="flex items-center gap-2 text-primary">
-              <Trophy size={16} />
-              Correct: {gameSession.questionsCorrect}
+              <Puzzle size={16} />
+              Level: {currentGame.difficulty_level}
             </div>
           </div>
         </div>
@@ -462,67 +367,54 @@ const Games = () => {
     <div className="container mx-auto p-6">
       <div className="space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-primary mb-2">Fun Games</h1>
-          <p className="text-muted-foreground">Learn Gujarati through interactive games!</p>
+          <h1 className="text-3xl font-bold text-primary mb-2">Interactive Games</h1>
+          <p className="text-muted-foreground">Play engaging games to reinforce your learning!</p>
         </div>
 
-        {quizzes.length === 0 ? (
+        {games.length === 0 ? (
           <Card className="text-center p-8">
-            <GamepadIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <Gamepad2 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <CardTitle className="mb-2">No Games Available</CardTitle>
-            <CardDescription>Games will be added by teachers soon!</CardDescription>
+            <CardDescription>Interactive games will be added by teachers soon!</CardDescription>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {quizzes.map((quiz) => {
-              const isCompleted = completedQuizzes.some(cq => cq.quiz_id === quiz.id);
-              
-              return (
-                <Card key={quiz.id} className="cursor-pointer hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <GamepadIcon className="w-8 h-8 text-primary" />
-                      <div className="flex flex-col items-end gap-2">
-                        <Badge variant="outline">
-                          Level {quiz.difficulty_level}
-                        </Badge>
-                        {isCompleted && (
-                          <Badge variant="secondary" className="text-xs">
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Completed
-                          </Badge>
-                        )}
-                      </div>
+            {games.map((game) => (
+              <Card key={game.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <Gamepad2 className="w-8 h-8 text-primary" />
+                    <Badge variant="outline">
+                      Level {game.difficulty_level}
+                    </Badge>
+                  </div>
+                  <CardTitle>{game.title}</CardTitle>
+                  <CardDescription>{game.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span>Game Type:</span>
+                      <span className="capitalize">{game.game_type.replace('_', ' ')}</span>
                     </div>
-                    <CardTitle>{quiz.title}</CardTitle>
-                    <CardDescription>{quiz.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span>Questions:</span>
-                        <span>{quiz.questions.length}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Time per Question:</span>
-                        <span>15 seconds</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Points per Correct:</span>
-                        <span>10 points</span>
-                      </div>
-                      <Button 
-                        onClick={() => startGame(quiz)}
-                        className="w-full"
-                        variant={isCompleted ? "outline" : "default"}
-                      >
-                        {isCompleted ? 'Play Again (No Points)' : 'Start Game'}
-                      </Button>
+                    <div className="flex justify-between text-sm">
+                      <span>Time Limit:</span>
+                      <span>{Math.floor(game.time_limit / 60)}:{(game.time_limit % 60).toString().padStart(2, '0')}</span>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    <div className="flex justify-between text-sm">
+                      <span>Max Score:</span>
+                      <span>{game.max_score} points</span>
+                    </div>
+                    <Button 
+                      onClick={() => startGame(game)}
+                      className="w-full"
+                    >
+                      Start Game
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </div>

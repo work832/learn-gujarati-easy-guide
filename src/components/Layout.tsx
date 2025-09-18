@@ -62,7 +62,7 @@ const Layout = () => {
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <BookOpen className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold text-foreground">Learn Gujarati Easy</h1>
+            <h1 className="text-xl font-bold text-foreground">Gujarati Setu</h1>
           </div>
           
           <div className="flex items-center space-x-4">
@@ -103,11 +103,11 @@ const Layout = () => {
               {!isTeacher && (
                 <>
                   <NavLink
-                    to="/flashcards"
+                    to="/word-bank"
                     className={({ isActive }) => cn(navLinkClass, isActive && activeClass)}
                   >
                     <BookOpen className="h-5 w-5" />
-                    <span>Flashcards</span>
+                    <span>Word Bank</span>
                   </NavLink>
                   
                   <NavLink
@@ -115,7 +115,15 @@ const Layout = () => {
                     className={({ isActive }) => cn(navLinkClass, isActive && activeClass)}
                   >
                     <PlaySquare className="h-5 w-5" />
-                    <span>Practice</span>
+                    <span>Basic Learning</span>
+                  </NavLink>
+                  
+                  <NavLink
+                    to="/quiz"
+                    className={({ isActive }) => cn(navLinkClass, isActive && activeClass)}
+                  >
+                    <Gamepad2 className="h-5 w-5" />
+                    <span>Quiz</span>
                   </NavLink>
                   
                   <NavLink

@@ -114,9 +114,9 @@ const Auth = () => {
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center space-x-2 text-primary">
             <BookOpen className="h-8 w-8" />
-            <h1 className="text-2xl font-bold">Learn Gujarati Easy</h1>
+            <h1 className="text-2xl font-bold">Gujarati Setu</h1>
           </div>
-          <p className="text-muted-foreground">Start your Gujarati learning journey today</p>
+          <p className="text-muted-foreground">Bridge to Gujarati language and culture</p>
         </div>
 
         <Card>

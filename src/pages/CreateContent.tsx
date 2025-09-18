@@ -244,34 +244,34 @@ const CreateContent = () => {
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="vocabulary" className="gap-2">
               <BookOpen size={16} />
-              Vocabulary
+              Word Bank
             </TabsTrigger>
             <TabsTrigger value="quizzes" className="gap-2">
               <GamepadIcon size={16} />
-              Quiz/Game
+              Quiz
             </TabsTrigger>
             <TabsTrigger value="dialogues" className="gap-2">
               <MessageCircle size={16} />
-              Dialogue
+              Basic Learning
             </TabsTrigger>
-            <TabsTrigger value="manage" className="gap-2">
-              <Eye size={16} />
-              Manage Content
+            <TabsTrigger value="games" className="gap-2">
+              <GamepadIcon size={16} />
+              Games
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="vocabulary">
             <Card>
               <CardHeader>
-                <CardTitle>Add New Vocabulary</CardTitle>
-                <CardDescription>Create new vocabulary words for students to learn</CardDescription>
+                <CardTitle>Add Word Bank Content</CardTitle>
+                <CardDescription>Create synonyms (પર્યાયવાચી), antonyms (વિલોમ), and idioms (મહાવરો)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* CSV Upload for Vocabulary */}
                 <CSVUploader 
-                  uploadType="vocabulary"
-                  title="Upload Vocabulary CSV"
-                  description="Upload a CSV file to bulk add vocabulary words"
+                  uploadType="word_bank"
+                  title="Upload Word Bank CSV"
+                  description="Upload a CSV file to bulk add synonyms, antonyms, and idioms"
                   onUploadSuccess={() => {}} 
                 />
                 
@@ -283,26 +283,26 @@ const CreateContent = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="english">English Word *</Label>
+                    <Label htmlFor="english">English Word/Phrase *</Label>
                     <Input
                       id="english"
-                      value={vocabForm.english_word}
+                      value={vocabForm.english_word || ''}
                       onChange={(e) => setVocabForm(prev => ({ ...prev, english_word: e.target.value }))}
-                      placeholder="Enter English word"
+                      placeholder="Enter English word or phrase"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="gujarati">Gujarati Word *</Label>
+                    <Label htmlFor="gujarati">Gujarati Word/Phrase *</Label>
                     <Input
                       id="gujarati"
-                      value={vocabForm.gujarati_word}
+                      value={vocabForm.gujarati_word || ''}
                       onChange={(e) => setVocabForm(prev => ({ ...prev, gujarati_word: e.target.value }))}
-                      placeholder="Enter Gujarati word"
+                      placeholder="Enter Gujarati word or phrase"
                     />
                   </div>
                 </div>
-                <Button onClick={createVocabulary} disabled={loading}>
-                  {loading ? 'Creating...' : 'Create Vocabulary'}
+                <Button onClick={() => toast({ title: "Feature Coming Soon", description: "Manual word bank creation will be available soon. Please use CSV upload." })}>
+                  Create Word Bank Entry
                 </Button>
               </CardContent>
             </Card>
@@ -391,16 +391,16 @@ const CreateContent = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MessageCircle className="h-5 w-5" />
-                  Create Dialogue
+                  Create Basic Learning Content
                 </CardTitle>
-                <CardDescription>Create conversation practice dialogues</CardDescription>
+                <CardDescription>Create alphabets, numbers, and basic words content</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* CSV Upload for Dialogues */}
+                {/* CSV Upload for Basic Learning */}
                 <CSVUploader 
-                  uploadType="dialogue"
-                  title="Upload Dialogue CSV"
-                  description="Upload a CSV file to bulk create dialogues"
+                  uploadType="basic_learning"
+                  title="Upload Basic Learning CSV"
+                  description="Upload a CSV file to bulk create alphabets, numbers, and basic words"
                   onUploadSuccess={loadExistingContent} 
                 />
                 
@@ -412,52 +412,80 @@ const CreateContent = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="dialogue-title">Title *</Label>
+                    <Label htmlFor="content-type">Content Type *</Label>
                     <Input
-                      id="dialogue-title"
-                      value={dialogueForm.title}
-                      onChange={(e) => setDialogueForm(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Enter dialogue title"
+                      id="content-type"
+                      placeholder="alphabet, number, or basic_word"
+                      disabled
                     />
                   </div>
                   <div>
-                    <Label htmlFor="scenario">Scenario *</Label>
+                    <Label htmlFor="english-content">English Content *</Label>
                     <Input
-                      id="scenario"
-                      value={dialogueForm.scenario}
-                      onChange={(e) => setDialogueForm(prev => ({ ...prev, scenario: e.target.value }))}
-                      placeholder="e.g., At a restaurant"
+                      id="english-content"
+                      placeholder="Enter English content"
+                      disabled
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="dialogue-description">Description</Label>
-                  <Textarea
-                    id="dialogue-description"
-                    value={dialogueForm.description}
-                    onChange={(e) => setDialogueForm(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Describe the dialogue context"
+                  <Label htmlFor="gujarati-content">Gujarati Content *</Label>
+                  <Input
+                    id="gujarati-content"
+                    placeholder="Enter Gujarati content"
+                    disabled
                   />
                 </div>
 
                 <Button 
                   onClick={() => {
-                    // Create dialogue functionality would go here
                     toast({
                       title: "Feature Coming Soon",
-                      description: "Manual dialogue creation will be available soon. Please use CSV upload for now.",
+                      description: "Manual basic learning creation will be available soon. Please use CSV upload for now.",
                     });
                   }} 
                   disabled={loading}
                 >
-                  {loading ? 'Creating...' : 'Create Dialogue'}
+                  Create Basic Learning Content
                 </Button>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="manage">
+          <TabsContent value="games">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <GamepadIcon className="h-5 w-5" />
+                  Create Interactive Games
+                </CardTitle>
+                <CardDescription>Create match-the-following and fill-in-the-blanks games</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <CSVUploader 
+                  uploadType="games"
+                  title="Upload Games CSV"
+                  description="Upload a CSV file to bulk create interactive games"
+                  onUploadSuccess={loadExistingContent} 
+                />
+                
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 h-px bg-border"></div>
+                  <span className="bg-background px-2 text-muted-foreground">Or create manually</span>
+                  <div className="flex-1 h-px bg-border"></div>
+                </div>
+
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    Manual game creation will be available soon. Please use CSV upload for now.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="manage" className="hidden">
             <Card>
               <CardHeader>
                 <CardTitle>Manage Content</CardTitle>

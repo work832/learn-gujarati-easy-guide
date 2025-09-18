@@ -93,15 +93,15 @@ const StudentDashboard = () => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Link to="/flashcards">
+        <Link to="/word-bank">
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center space-x-2 text-lg">
                 <BookOpen className="h-5 w-5 text-primary" />
-                <span>Practice Flashcards</span>
+                <span>Word Bank</span>
               </CardTitle>
               <CardDescription>
-                Review vocabulary with interactive flashcards
+                Learn synonyms, antonyms, and idioms
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -124,19 +124,19 @@ const StudentDashboard = () => {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center space-x-2 text-lg">
                 <PlaySquare className="h-5 w-5 text-accent" />
-                <span>Conversation Practice</span>
+                <span>Basic Learning</span>
               </CardTitle>
               <CardDescription>
-                Practice speaking with AI conversation partner
+                Learn alphabets, numbers, and basic words
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button variant="outline" className="w-full" size="lg">
-                Start Speaking
+                Start Learning
               </Button>
               <div className="mt-3 space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Dialogues</span>
+                  <span className="text-muted-foreground">Items</span>
                   <span className="text-muted-foreground">0 completed</span>
                 </div>
                 <Progress value={0} className="h-2" />
@@ -150,10 +150,10 @@ const StudentDashboard = () => {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center space-x-2 text-lg">
                 <Gamepad2 className="h-5 w-5 text-warning" />
-                <span>Fun Games</span>
+                <span>Interactive Games</span>
               </CardTitle>
               <CardDescription>
-                Play games to reinforce your learning
+                Play match-the-following and fill-in-the-blanks
               </CardDescription>
             </CardHeader>
             <CardContent>

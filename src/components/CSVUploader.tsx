@@ -71,6 +71,15 @@ export const CSVUploader = ({
       } else if (uploadType === 'dialogue') {
         const result = await parseDialogueCSV(lines);
         createdCount = result.createdCount;
+      } else if (uploadType === 'word_bank') {
+        const result = await parseWordBankCSV(lines);
+        createdCount = result.createdCount;
+      } else if (uploadType === 'basic_learning') {
+        const result = await parseBasicLearningCSV(lines);
+        createdCount = result.createdCount;
+      } else if (uploadType === 'games') {
+        const result = await parseGamesCSV(lines);
+        createdCount = result.createdCount;
       }
       
       return { createdCount, updatedCount };

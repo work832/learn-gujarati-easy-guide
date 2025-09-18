@@ -8,8 +8,9 @@ import { AuthProvider } from "@/components/AuthProvider";
 import Layout from "@/components/Layout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import Flashcards from "./pages/Flashcards";
+import WordBank from "./pages/WordBank";
 import Games from "./pages/Games";
+import Quiz from "./pages/Quiz";
 import Practice from "./pages/Practice";
 import CreateContent from "./pages/CreateContent";
 import StudentProgress from "./pages/StudentProgress";
@@ -28,8 +29,9 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/" element={<Layout />}>
             <Route index element={<Index />} />
-            <Route path="flashcards" element={<Flashcards />} />
+            <Route path="word-bank" element={<WordBank />} />
             <Route path="games" element={<Games />} />
+            <Route path="quiz" element={<Quiz />} />
             <Route path="practice" element={<Practice />} />
             <Route path="create-content" element={<CreateContent />} />
             <Route path="student-progress" element={<StudentProgress />} />

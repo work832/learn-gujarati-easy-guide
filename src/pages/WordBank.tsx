@@ -3,20 +3,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, Volume2, Check, X } from 'lucide-react';
+import { RotateCcw, Check, X, Plus, BookOpen } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
-interface BasicLearningItem {
+interface WordBankItem {
   id: string;
-  content_type: 'alphabet' | 'number' | 'basic_word';
-  english_content: string;
-  gujarati_content: string;
-  transliteration?: string;
-  audio_url?: string;
-  image_url?: string;
-  order_sequence?: number;
+  word_type: 'synonym' | 'antonym' | 'idiom';
+  gujarati_word: string;
+  english_word: string;
+  gujarati_meaning?: string;
+  english_meaning?: string;
+  example_sentence_gujarati?: string;
+  example_sentence_english?: string;
   difficulty_level: number;
 }
 
@@ -27,40 +27,38 @@ interface LearningProgress {
   times_reviewed: number;
 }
 
-const Practice = () => {
+const WordBank = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [basicItems, setBasicItems] = useState<BasicLearningItem[]>([]);
+  const [wordBankItems, setWordBankItems] = useState<WordBankItem[]>([]);
   const [learningProgress, setLearningProgress] = useState<LearningProgress[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'alphabet' | 'number' | 'basic_word'>('alphabet');
+  const [activeTab, setActiveTab] = useState<'synonym' | 'antonym' | 'idiom'>('synonym');
 
   useEffect(() => {
-    fetchBasicLearningItems();
+    fetchWordBankItems();
     if (user) {
       fetchLearningProgress();
     }
   }, [user, activeTab]);
 
-  const fetchBasicLearningItems = async () => {
+  const fetchWordBankItems = async () => {
     try {
       const { data, error } = await supabase
-        .from('basic_learning')
+        .from('word_bank')
         .select('*')
-        .eq('content_type', activeTab)
-        .order('order_sequence', { ascending: true });
+        .eq('word_type', activeTab)
+        .order('difficulty_level', { ascending: true });
 
       if (error) throw error;
-      setBasicItems(data || []);
-      setCurrentIndex(0);
-      setShowAnswer(false);
+      setWordBankItems(data || []);
     } catch (error) {
-      console.error('Error fetching basic learning items:', error);
+      console.error('Error fetching word bank items:', error);
       toast({
         title: "Error",
-        description: "Failed to load learning content",
+        description: "Failed to load word bank items",
         variant: "destructive"
       });
     } finally {
@@ -76,7 +74,7 @@ const Practice = () => {
         .from('learning_progress')
         .select('*')
         .eq('user_id', user.id)
-        .eq('content_type', 'basic_learning');
+        .eq('content_type', 'word_bank');
 
       if (error) throw error;
       setLearningProgress(data || []);
@@ -85,10 +83,10 @@ const Practice = () => {
     }
   };
 
-  const markItemLearned = async (learned: boolean) => {
-    if (!user || basicItems.length === 0) return;
+  const markWordLearned = async (learned: boolean) => {
+    if (!user || wordBankItems.length === 0) return;
 
-    const currentItem = basicItems[currentIndex];
+    const currentItem = wordBankItems[currentIndex];
     const existingProgress = learningProgress.find(p => p.content_id === currentItem.id);
 
     try {
@@ -109,7 +107,7 @@ const Practice = () => {
           .from('learning_progress')
           .insert({
             user_id: user.id,
-            content_type: 'basic_learning',
+            content_type: 'word_bank',
             content_id: currentItem.id,
             is_learned: learned,
             times_reviewed: 1,
@@ -123,14 +121,14 @@ const Practice = () => {
       // Move to next item
       setShowAnswer(false);
       setCurrentIndex((prev) => 
-        prev < basicItems.length - 1 ? prev + 1 : 0
+        prev < wordBankItems.length - 1 ? prev + 1 : 0
       );
 
       // Refresh progress
       fetchLearningProgress();
 
       toast({
-        title: learned ? "Great! 🎉" : "Keep Practicing",
+        title: learned ? "Word Learned! 🎉" : "Keep Practicing",
         description: learned ? "+5 points earned" : "Try again later",
       });
 
@@ -144,25 +142,11 @@ const Practice = () => {
     }
   };
 
-  const playAudio = (text: string) => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'gu-IN';
-      speechSynthesis.speak(utterance);
-    } else {
-      toast({
-        title: "Audio Not Available",
-        description: "Text-to-speech is not supported in this browser",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const getTabTitle = (type: string) => {
+  const getWordTypeTitle = (type: string) => {
     switch (type) {
-      case 'alphabet': return 'Alphabets (અક્ષરો)';
-      case 'number': return 'Numbers (સંખ્યાઓ)';
-      case 'basic_word': return 'Basic Words (મૂળભૂત શબ્દો)';
+      case 'synonym': return 'પર્યાયવાચી (Synonyms)';
+      case 'antonym': return 'વિલોમ (Antonyms)';
+      case 'idiom': return 'મહાવરો (Idioms)';
       default: return type;
     }
   };
@@ -170,22 +154,22 @@ const Practice = () => {
   if (loading) {
     return (
       <div className="container mx-auto p-6">
-        <div className="text-center">Loading basic learning content...</div>
+        <div className="text-center">Loading word bank...</div>
       </div>
     );
   }
 
-  if (basicItems.length === 0) {
+  if (wordBankItems.length === 0) {
     return (
       <div className="container mx-auto p-6">
         <div className="text-center space-y-4">
-          <h1 className="text-3xl font-bold text-primary">Basic Learning</h1>
-          <p className="text-muted-foreground">No {getTabTitle(activeTab).toLowerCase()} available yet!</p>
+          <h1 className="text-3xl font-bold text-primary">Word Bank</h1>
+          <p className="text-muted-foreground">No {getWordTypeTitle(activeTab).toLowerCase()} available yet!</p>
           <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)}>
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="alphabet">અક્ષરો</TabsTrigger>
-              <TabsTrigger value="number">સંખ્યાઓ</TabsTrigger>
-              <TabsTrigger value="basic_word">મૂળભૂત શબ્દો</TabsTrigger>
+              <TabsTrigger value="synonym">પર્યાયવાચી</TabsTrigger>
+              <TabsTrigger value="antonym">વિલોમ</TabsTrigger>
+              <TabsTrigger value="idiom">મહાવરો</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -193,17 +177,17 @@ const Practice = () => {
     );
   }
 
-  const currentItem = basicItems[currentIndex];
+  const currentItem = wordBankItems[currentIndex];
   const currentProgress = learningProgress.find(p => p.content_id === currentItem?.id);
 
   return (
     <div className="container mx-auto p-6">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-primary">Basic Learning</h1>
+          <h1 className="text-3xl font-bold text-primary">Word Bank</h1>
           <div className="flex gap-2 items-center">
             <Badge variant="secondary">
-              {currentIndex + 1} / {basicItems.length}
+              {currentIndex + 1} / {wordBankItems.length}
             </Badge>
             <Badge variant={currentProgress?.is_learned ? "default" : "outline"}>
               {currentProgress?.is_learned ? "Learned" : "Learning"}
@@ -213,40 +197,42 @@ const Practice = () => {
 
         <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)}>
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="alphabet">અક્ષરો (Alphabets)</TabsTrigger>
-            <TabsTrigger value="number">સંખ્યાઓ (Numbers)</TabsTrigger>
-            <TabsTrigger value="basic_word">મૂળભૂત શબ્દો (Basic Words)</TabsTrigger>
+            <TabsTrigger value="synonym">પર્યાયવાચી (Synonyms)</TabsTrigger>
+            <TabsTrigger value="antonym">વિલોમ (Antonyms)</TabsTrigger>
+            <TabsTrigger value="idiom">મહાવરો (Idioms)</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab}>
             <Card className="max-w-2xl mx-auto">
               <CardHeader>
                 <CardTitle className="text-center">
-                  {showAnswer ? "Learn & Practice" : getTabTitle(activeTab)}
+                  {showAnswer ? "Meaning & Translation" : getWordTypeTitle(activeTab)}
                 </CardTitle>
                 <CardDescription className="text-center">
-                  {showAnswer ? "Practice pronunciation" : `Learn ${activeTab === 'alphabet' ? 'letters' : activeTab === 'number' ? 'numbers' : 'words'}`}
+                  {showAnswer ? "Learn the meaning" : `What does this ${activeTab} mean?`}
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center space-y-6">
-                <div className="text-6xl font-bold text-primary min-h-[120px] flex items-center justify-center">
+                <div className="text-4xl font-bold text-primary min-h-[100px] flex items-center justify-center">
                   {showAnswer ? (
                     <div className="space-y-4">
-                      <div className="text-8xl">{currentItem?.gujarati_content}</div>
-                      <div className="text-3xl text-secondary">
-                        {currentItem?.english_content}
+                      <div className="text-2xl text-secondary">
+                        {currentItem?.gujarati_meaning || currentItem?.english_meaning}
                       </div>
-                      {currentItem?.transliteration && (
-                        <div className="text-xl text-muted-foreground">
-                          ({currentItem.transliteration})
+                      {currentItem?.example_sentence_gujarati && (
+                        <div className="text-lg text-muted-foreground border-l-4 border-primary pl-4">
+                          <div className="font-semibold">{currentItem.example_sentence_gujarati}</div>
+                          {currentItem.example_sentence_english && (
+                            <div className="text-sm italic">{currentItem.example_sentence_english}</div>
+                          )}
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <div>{currentItem?.english_content}</div>
+                      <div>{currentItem?.gujarati_word}</div>
                       <div className="text-2xl text-muted-foreground">
-                        What is this in Gujarati?
+                        ({currentItem?.english_word})
                       </div>
                     </div>
                   )}
@@ -255,40 +241,29 @@ const Practice = () => {
                 <div className="flex justify-center gap-4">
                   {!showAnswer ? (
                     <Button onClick={() => setShowAnswer(true)} size="lg">
-                      <BookOpen size={20} className="mr-2" />
-                      Show Answer
+                      <RotateCcw size={20} className="mr-2" />
+                      Show Meaning
                     </Button>
                   ) : (
-                    <>
+                    <div className="flex gap-4">
                       <Button
+                        onClick={() => markWordLearned(false)}
                         variant="outline"
-                        size="sm"
-                        onClick={() => playAudio(currentItem?.gujarati_content || '')}
+                        size="lg"
                         className="gap-2"
                       >
-                        <Volume2 size={16} />
-                        Play Audio
+                        <X size={20} />
+                        Need Practice
                       </Button>
-                      <div className="flex gap-4">
-                        <Button
-                          onClick={() => markItemLearned(false)}
-                          variant="outline"
-                          size="lg"
-                          className="gap-2"
-                        >
-                          <X size={20} />
-                          Need Practice
-                        </Button>
-                        <Button
-                          onClick={() => markItemLearned(true)}
-                          size="lg"
-                          className="gap-2"
-                        >
-                          <Check size={20} />
-                          Got It!
-                        </Button>
-                      </div>
-                    </>
+                      <Button
+                        onClick={() => markWordLearned(true)}
+                        size="lg"
+                        className="gap-2"
+                      >
+                        <Check size={20} />
+                        Got It!
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -300,4 +275,4 @@ const Practice = () => {
   );
 };
 
-export default Practice;
+export default WordBank;
